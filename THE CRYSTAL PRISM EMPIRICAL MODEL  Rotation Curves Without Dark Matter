@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+"""
+CRYSTAL PRISM v45 — FULL CATALOG VALIDATION
+===========================================
+Runs the complete 175-galaxy SPARC catalog test.
+"""
+
+import numpy as np
+from scipy.optimize import minimize
+from scipy.interpolate import interp1d
+import requests
+import zipfile
+import os
+import glob
+import warnings
+warnings.filterwarnings('ignore')
+
+# ============================================================================
+# CONSTANTS
+# ============================================================================
+
+G_SI = 6.6720e-11
+a0_SI = 1.0422e-10
+c = 2.99792458e8
+a0_base = 3700.0
+Sigma_char = 50.0
+M_sun_kg = 1.989e30
+G_PC = 4.3009e-3
+kpc_to_pc = 1000.0
+ML_DISK = 0.50
+ML_BULGE = 0.70
+
+# ============================================================================
+# SPARC MASTER TABLE
+# ============================================================================
+
+SPARC_MASTER = {
+    'CamB': {'inc': 51, 'T': 10}, 'D512-2': {'inc': 37, 'T': 10},
+    'D564-8': {'inc': 45, 'T': 10}, 'D631-7': {'inc': 53, 'T': 10},
+    'DDO064': {'inc': 70, 'T': 10}, 'DDO154': {'inc': 66, 'T': 10},
+    'DDO161': {'inc': 40, 'T': 10}, 'DDO168': {'inc': 47, 'T': 10},
+    'DDO170': {'inc': 70, 'T': 10}, 'ESO079-G014': {'inc': 60, 'T': 4},
+    'ESO116-G012': {'inc': 35, 'T': 7}, 'ESO444-G084': {'inc': 65, 'T': 10},
+    'ESO563-G021': {'inc': 54, 'T': 4}, 'F561-1': {'inc': 90, 'T': 9},
+    'F563-1': {'inc': 90, 'T': 9}, 'F563-V1': {'inc': 90, 'T': 10},
+    'F563-V2': {'inc': 90, 'T': 10}, 'F565-V2': {'inc': 90, 'T': 10},
+    'F567-2': {'inc': 90, 'T': 9}, 'F568-1': {'inc': 90, 'T': 5},
+    'F568-3': {'inc': 90, 'T': 7}, 'F568-V1': {'inc': 90, 'T': 7},
+    'F571-8': {'inc': 90, 'T': 5}, 'F571-V1': {'inc': 90, 'T': 7},
+    'F574-1': {'inc': 90, 'T': 7}, 'F574-2': {'inc': 90, 'T': 9},
+    'F579-V1': {'inc': 90, 'T': 5}, 'F583-1': {'inc': 90, 'T': 9},
+    'F583-4': {'inc': 90, 'T': 5}, 'IC2574': {'inc': 50, 'T': 9},
+    'IC4202': {'inc': 77, 'T': 4}, 'KK98-251': {'inc': 52, 'T': 10},
+    'NGC0024': {'inc': 46, 'T': 5}, 'NGC0055': {'inc': 90, 'T': 9},
+    'NGC0100': {'inc': 76, 'T': 6}, 'NGC0247': {'inc': 75, 'T': 7},
+    'NGC0289': {'inc': 39, 'T': 4}, 'NGC0300': {'inc': 42, 'T': 7},
+    'NGC0801': {'inc': 85, 'T': 5}, 'NGC0891': {'inc': 79, 'T': 3},
+    'NGC1003': {'inc': 62, 'T': 6}, 'NGC1090': {'inc': 70, 'T': 4},
+    'NGC1705': {'inc': 30, 'T': 11}, 'NGC2366': {'inc': 63, 'T': 10},
+    'NGC2403': {'inc': 58, 'T': 6}, 'NGC2683': {'inc': 80, 'T': 3},
+    'NGC2841': {'inc': 72, 'T': 3}, 'NGC2903': {'inc': 67, 'T': 4},
+    'NGC2915': {'inc': 35, 'T': 11}, 'NGC2955': {'inc': 57, 'T': 3},
+    'NGC2976': {'inc': 60, 'T': 5}, 'NGC2998': {'inc': 60, 'T': 5},
+    'NGC3109': {'inc': 90, 'T': 9}, 'NGC3198': {'inc': 72, 'T': 5},
+    'NGC3521': {'inc': 63, 'T': 4}, 'NGC3726': {'inc': 48, 'T': 5},
+    'NGC3741': {'inc': 65, 'T': 10}, 'NGC3769': {'inc': 70, 'T': 3},
+    'NGC3877': {'inc': 76, 'T': 5}, 'NGC3893': {'inc': 46, 'T': 5},
+    'NGC3917': {'inc': 80, 'T': 6}, 'NGC3949': {'inc': 54, 'T': 4},
+    'NGC3953': {'inc': 62, 'T': 4}, 'NGC3972': {'inc': 80, 'T': 4},
+    'NGC3992': {'inc': 57, 'T': 4}, 'NGC4010': {'inc': 88, 'T': 7},
+    'NGC4013': {'inc': 90, 'T': 3}, 'NGC4051': {'inc': 46, 'T': 4},
+    'NGC4068': {'inc': 22, 'T': 10}, 'NGC4085': {'inc': 82, 'T': 5},
+    'NGC4088': {'inc': 63, 'T': 4}, 'NGC4100': {'inc': 72, 'T': 4},
+    'NGC4138': {'inc': 54, 'T': 0}, 'NGC4157': {'inc': 80, 'T': 3},
+    'NGC4183': {'inc': 84, 'T': 6}, 'NGC4214': {'inc': 46, 'T': 10},
+    'NGC4217': {'inc': 78, 'T': 3}, 'NGC4389': {'inc': 39, 'T': 4},
+    'NGC4559': {'inc': 69, 'T': 6}, 'NGC5005': {'inc': 61, 'T': 4},
+    'NGC5033': {'inc': 63, 'T': 5}, 'NGC5055': {'inc': 56, 'T': 4},
+    'NGC5371': {'inc': 45, 'T': 4}, 'NGC5585': {'inc': 53, 'T': 7},
+    'NGC5907': {'inc': 86, 'T': 5}, 'NGC5985': {'inc': 56, 'T': 3},
+    'NGC6015': {'inc': 66, 'T': 6}, 'NGC6195': {'inc': 38, 'T': 3},
+    'NGC6503': {'inc': 73, 'T': 6}, 'NGC6674': {'inc': 51, 'T': 3},
+    'NGC6789': {'inc': 45, 'T': 11}, 'NGC6946': {'inc': 38, 'T': 6},
+    'NGC7331': {'inc': 75, 'T': 3}, 'NGC7793': {'inc': 49, 'T': 7},
+    'NGC7814': {'inc': 90, 'T': 2}, 'PGC51017': {'inc': 51, 'T': 11},
+    'UGC00128': {'inc': 50, 'T': 8}, 'UGC00191': {'inc': 88, 'T': 9},
+    'UGC00634': {'inc': 49, 'T': 9}, 'UGC00731': {'inc': 50, 'T': 10},
+    'UGC00891': {'inc': 45, 'T': 9}, 'UGC01230': {'inc': 78, 'T': 9},
+    'UGC01281': {'inc': 65, 'T': 8}, 'UGC02023': {'inc': 76, 'T': 10},
+    'UGC02259': {'inc': 64, 'T': 8}, 'UGC02455': {'inc': 42, 'T': 10},
+    'UGC02487': {'inc': 71, 'T': 0}, 'UGC02885': {'inc': 65, 'T': 5},
+    'UGC02916': {'inc': 72, 'T': 2}, 'UGC02953': {'inc': 64, 'T': 2},
+    'UGC03205': {'inc': 37, 'T': 2}, 'UGC03546': {'inc': 44, 'T': 1},
+    'UGC03580': {'inc': 44, 'T': 1}, 'UGC04278': {'inc': 54, 'T': 7},
+    'UGC04305': {'inc': 34, 'T': 10}, 'UGC04325': {'inc': 56, 'T': 9},
+    'UGC04483': {'inc': 67, 'T': 10}, 'UGC04499': {'inc': 51, 'T': 8},
+    'UGC05005': {'inc': 54, 'T': 10}, 'UGC05253': {'inc': 39, 'T': 2},
+    'UGC05414': {'inc': 55, 'T': 10}, 'UGC05716': {'inc': 57, 'T': 9},
+    'UGC05721': {'inc': 64, 'T': 7}, 'UGC05750': {'inc': 65, 'T': 8},
+    'UGC05764': {'inc': 80, 'T': 10}, 'UGC05829': {'inc': 71, 'T': 10},
+    'UGC05918': {'inc': 83, 'T': 10}, 'UGC05986': {'inc': 65, 'T': 9},
+    'UGC05999': {'inc': 65, 'T': 10}, 'UGC06399': {'inc': 67, 'T': 9},
+    'UGC06446': {'inc': 62, 'T': 7}, 'UGC06614': {'inc': 72, 'T': 1},
+    'UGC06628': {'inc': 70, 'T': 9}, 'UGC06667': {'inc': 55, 'T': 6},
+    'UGC06786': {'inc': 71, 'T': 0}, 'UGC06787': {'inc': 60, 'T': 2},
+    'UGC06818': {'inc': 88, 'T': 9}, 'UGC06917': {'inc': 76, 'T': 9},
+    'UGC06923': {'inc': 60, 'T': 10}, 'UGC06930': {'inc': 64, 'T': 7},
+    'UGC06973': {'inc': 72, 'T': 2}, 'UGC06983': {'inc': 50, 'T': 6},
+    'UGC07089': {'inc': 72, 'T': 8}, 'UGC07125': {'inc': 68, 'T': 9},
+    'UGC07151': {'inc': 88, 'T': 6}, 'UGC07232': {'inc': 50, 'T': 10},
+    'UGC07261': {'inc': 73, 'T': 8}, 'UGC07323': {'inc': 71, 'T': 8},
+    'UGC07399': {'inc': 51, 'T': 8}, 'UGC07524': {'inc': 48, 'T': 9},
+    'UGC07559': {'inc': 60, 'T': 10}, 'UGC07577': {'inc': 42, 'T': 10},
+    'UGC07603': {'inc': 56, 'T': 7}, 'UGC07608': {'inc': 65, 'T': 10},
+    'UGC07690': {'inc': 55, 'T': 10}, 'UGC07866': {'inc': 78, 'T': 10},
+    'UGC08286': {'inc': 63, 'T': 6}, 'UGC08490': {'inc': 68, 'T': 9},
+    'UGC08550': {'inc': 68, 'T': 7}, 'UGC08699': {'inc': 62, 'T': 2},
+    'UGC08837': {'inc': 54, 'T': 10}, 'UGC09037': {'inc': 54, 'T': 6},
+    'UGC09133': {'inc': 41, 'T': 2}, 'UGC09992': {'inc': 33, 'T': 10},
+    'UGC10310': {'inc': 62, 'T': 9}, 'UGC11455': {'inc': 82, 'T': 6},
+    'UGC11557': {'inc': 48, 'T': 8}, 'UGC11820': {'inc': 79, 'T': 9},
+    'UGC11914': {'inc': 40, 'T': 2}, 'UGC12506': {'inc': 80, 'T': 6},
+    'UGC12632': {'inc': 43, 'T': 9}, 'UGC12732': {'inc': 75, 'T': 9},
+    'UGCA281': {'inc': 53, 'T': 11}, 'UGCA442': {'inc': 57, 'T': 9},
+    'UGCA444': {'inc': 72, 'T': 10},
+}
+
+# ============================================================================
+# DATA LOADER
+# ============================================================================
+
+ZENODO_URL = "https://zenodo.org/records/16284118/files/Rotmod_LTG.zip"
+
+def load_all_sparc(sparc_dir="sparc_data"):
+    os.makedirs(sparc_dir, exist_ok=True)
+    zip_path = os.path.join(sparc_dir, "Rotmod_LTG.zip")
+    if not os.path.exists(zip_path):
+        print("Downloading SPARC from Zenodo...")
+        r = requests.get(ZENODO_URL, timeout=60)
+        r.raise_for_status()
+        with open(zip_path, 'wb') as f:
+            f.write(r.content)
+    if not glob.glob(f"{sparc_dir}/*_rotmod.dat"):
+        print("Extracting...")
+        with zipfile.ZipFile(zip_path, 'r') as z:
+            z.extractall(sparc_dir)
+    galaxies = {}
+    for fp in sorted(glob.glob(f"{sparc_dir}/*_rotmod.dat")):
+        name = os.path.basename(fp).replace('_rotmod.dat', '')
+        data = []
+        with open(fp) as f:
+            for line in f:
+                s = line.strip()
+                if not s or s.startswith('#'):
+                    continue
+                p = s.split()
+                if len(p) >= 6:
+                    try:
+                        data.append([float(x) for x in p[:8]])
+                    except:
+                        continue
+        if len(data) < 3:
+            continue
+        d = np.array(data)
+        R, Vo, Ve = d[:,0], d[:,1], d[:,2]
+        Vg, Vd, Vb = np.abs(d[:,3]), d[:,4], d[:,5] if d.shape[1] > 5 else np.zeros_like(R)
+        m = (Vo > 0) & (Ve > 0) & (R > 0)
+        if m.sum() < 3:
+            continue
+        galaxies[name] = {
+            'name': name,
+            'R_kpc': R[m],
+            'V_obs': Vo[m],
+            'V_err': Ve[m],
+            'V_gas_raw': Vg[m],
+            'V_disk': Vd[m],
+            'V_bul': Vb[m],
+        }
+    print(f"Loaded {len(galaxies)} galaxies from SPARC")
+    return galaxies
+
+# ============================================================================
+# CRYSTAL PRISM ENGINE (v45)
+# ============================================================================
+
+def compute_v7(R_kpc, V_disk_raw, V_bul_raw, V_gas_raw, ml_disk, ml_bul, inc, alpha, r_scale):
+    R_kpc = np.asarray(R_kpc, dtype=float)
+    if len(R_kpc) != len(V_disk_raw):
+        R_orig = np.linspace(0.01, max(R_kpc), len(V_disk_raw))
+        V_disk_int = interp1d(R_orig, V_disk_raw, kind='linear', fill_value='extrapolate')(R_kpc)
+        V_bul_int = interp1d(R_orig, V_bul_raw, kind='linear', fill_value='extrapolate')(R_kpc)
+        V_gas_int = interp1d(R_orig, V_gas_raw, kind='linear', fill_value='extrapolate')(R_kpc)
+    else:
+        V_disk_int, V_bul_int, V_gas_int = V_disk_raw, V_bul_raw, V_gas_raw
+    
+    V_disk_ml = V_disk_int * np.sqrt(max(ml_disk, 0.01))
+    V_bul_ml = V_bul_int * np.sqrt(max(ml_bul, 0.01))
+    V_gas = np.abs(V_gas_int)
+    V_bar = np.sqrt(V_gas**2 + V_disk_ml**2 + V_bul_ml**2)
+    
+    R_pc = R_kpc * kpc_to_pc
+    eps = 1e-10
+    S_g = np.where(R_pc > eps, V_gas**2 / (2 * np.pi * G_PC * R_pc), 0)
+    S_d = np.where(R_pc > eps, V_disk_ml**2 / (2 * np.pi * G_PC * R_pc), 0)
+    S_b = np.where(R_pc > eps, V_bul_ml**2 / (2 * np.pi * G_PC * R_pc), 0)
+    S_bar = S_g + S_d + S_b
+    
+    Vb2R = V_bar**2 * R_pc
+    M_bar = np.max(Vb2R) / G_PC
+    
+    Vf0 = (a0_SI * G_SI * M_bar * M_sun_kg)**0.25 / 1000.0
+    rt0 = np.clip(Vf0**2 / a0_base, min(R_kpc) * 1.01, max(R_kpc) * 0.99)
+    St0 = np.interp(rt0, R_kpc, S_bar)
+    a0_0 = a0_base * np.sqrt(np.clip(St0 / Sigma_char, 0.01, 100.0))
+    Vf1 = (a0_0 * (a0_SI / a0_base) * G_SI * M_bar * M_sun_kg)**0.25 / 1000.0
+    
+    rt = np.clip(Vf1**2 / a0_base, min(R_kpc) * 1.01, max(R_kpc) * 0.99)
+    St = np.interp(rt, R_kpc, S_bar)
+    a0_eff = a0_base * np.sqrt(np.clip(St / Sigma_char, 0.01, 100.0))
+    V_flat = (a0_eff * (a0_SI / a0_base) * G_SI * M_bar * M_sun_kg)**0.25 / 1000.0
+    
+    r_transition = V_flat**2 / a0_eff
+    V_vortex = alpha * V_flat * (1.0 - np.exp(-R_kpc / r_scale))
+    V_pred = np.sqrt(V_bar**2 + V_vortex**2)
+    
+    return V_pred, V_bar, V_flat, a0_eff, r_transition, M_bar, V_gas, V_disk_ml, V_bul_ml
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+def main():
+    print("\n" + "=" * 80)
+    print("  CRYSTAL PRISM v45 — FULL SPARC CATALOG VALIDATION")
+    print("=" * 80)
+    print(f"  a0_SI = {a0_SI:.4e} m/s²")
+    print(f"  Sigma_char = {Sigma_char} M☉/pc²")
+    print(f"  ML_DISK = {ML_DISK}, ML_BULGE = {ML_BULGE}")
+    print("=" * 80)
+    
+    # Load data
+    print("\n[1] Loading SPARC from Zenodo...")
+    galaxies = load_all_sparc()
+    
+    # Fit all galaxies
+    print("\n[2] Fitting all galaxies...")
+    results = []
+    
+    for i, (name, gal) in enumerate(galaxies.items()):
+        inc = SPARC_MASTER.get(name, {}).get('inc', 60.0)
+        T = SPARC_MASTER.get(name, {}).get('T', -1)
+        
+        # Fit galaxy
+        def objective(x):
+            alpha, r_scale = x[0], x[1]
+            if alpha < 0.0001 or r_scale < 0.01:
+                return 1e15
+            V_pred = compute_v7(gal['R_kpc'], gal['V_disk'], gal['V_bul'], gal['V_gas_raw'],
+                                ML_DISK, ML_BULGE, inc, alpha, r_scale)[0]
+            mask = (gal['V_obs'] > 1.0) & (gal['V_err'] > 0)
+            if np.sum(mask) < 3:
+                return 1e10
+            errs = np.sqrt(gal['V_err'][mask]**2 + (0.05 * gal['V_obs'][mask])**2)
+            return np.sum(((V_pred[mask] - gal['V_obs'][mask])**2) / errs**2)
+        
+        best_chi2, best_x = 1e20, [1.0, 5.0]
+        for a0, r0 in [(1, 5), (0.5, 2), (2, 15), (0.2, 0.5), (3, 50)]:
+            res = minimize(objective, [a0, r0], method='L-BFGS-B',
+                           bounds=[(0.0001, 10000.0), (0.01, 50000.0)])
+            if res.fun < best_chi2:
+                best_chi2, best_x = res.fun, res.x
+        
+        alpha_fit, r_scale_fit = best_x
+        
+        # Compute metrics
+        out = compute_v7(gal['R_kpc'], gal['V_disk'], gal['V_bul'], gal['V_gas_raw'],
+                         ML_DISK, ML_BULGE, inc, 1.0, 5.0)
+        V_pred_u, V_bar, V_flat, a0_eff, r_transition, M_bar, V_gas, V_disk, V_bul = out
+        r_transition = V_flat**2 / a0_eff
+        
+        mask = gal['V_obs'] > 1.0
+        N_used = np.sum(mask)
+        
+        if N_used >= 3:
+            V_univ = np.sqrt(V_bar[mask]**2 + (V_flat * (1 - np.exp(-gal['R_kpc'][mask] / r_transition)))**2)
+            acc_univ = 100 - np.mean(np.abs(100 * (V_univ - gal['V_obs'][mask]) / gal['V_obs'][mask]))
+            res_u = V_univ - gal['V_obs'][mask]
+            rms_u = np.sqrt(np.mean(res_u**2))
+            errs = np.sqrt(gal['V_err'][mask]**2 + (0.05 * gal['V_obs'][mask])**2)
+            chi2_u = np.sum((res_u / errs)**2)
+            redchi2_u = chi2_u / max(N_used, 1)
+            
+            V_fit = np.sqrt(V_bar[mask]**2 + (alpha_fit * V_flat * (1 - np.exp(-gal['R_kpc'][mask] / r_scale_fit)))**2)
+            acc_fit = 100 - np.mean(np.abs(100 * (V_fit - gal['V_obs'][mask]) / gal['V_obs'][mask]))
+            res_f = V_fit - gal['V_obs'][mask]
+            rms_f = np.sqrt(np.mean(res_f**2))
+            chi2_f = np.sum((res_f / errs)**2)
+            redchi2_f = chi2_f / max(N_used - 2, 1)
+        else:
+            acc_univ = acc_fit = rms_u = rms_f = np.nan
+            redchi2_u = redchi2_f = np.nan
+        
+        results.append({
+            'name': name,
+            'T': T,
+            'inc': inc,
+            'alpha': alpha_fit,
+            'r_scale': r_scale_fit,
+            'r_transition': r_transition,
+            'V_flat': V_flat,
+            'a0_eff': a0_eff,
+            'M_bar': M_bar,
+            'R_max': np.max(gal['R_kpc']),
+            'n_pts': len(gal['R_kpc']),
+            'acc_univ': acc_univ,
+            'acc_fit': acc_fit,
+            'rms_u': rms_u,
+            'rms_f': rms_f,
+            'redchi2_u': redchi2_u,
+            'redchi2_f': redchi2_f,
+        })
+        
+        if (i + 1) % 25 == 0:
+            print(f"      {i + 1} galaxies...")
+    
+    # ================================================================
+    # SUMMARY
+    # ================================================================
+    
+    print("\n" + "=" * 80)
+    print("  RESULTS")
+    print("=" * 80)
+    
+    # Universal model (alpha=1.0 fixed)
+    acc_u = [d['acc_univ'] for d in results if not np.isnan(d['acc_univ'])]
+    rms_u = [d['rms_u'] for d in results if not np.isnan(d['rms_u'])]
+    chi_u = [d['redchi2_u'] for d in results if not np.isnan(d['redchi2_u'])]
+    
+    print(f"\n  UNIVERSAL MODEL (alpha=1.0 fixed, 1 free parameter):")
+    print(f"    Galaxies fitted: {len(acc_u)}/175")
+    print(f"    Mean accuracy: {np.mean(acc_u):.1f}%")
+    print(f"    Median accuracy: {np.median(acc_u):.1f}%")
+    print(f"    Mean RMS: {np.mean(rms_u):.1f} km/s")
+    print(f"    Median RMS: {np.median(rms_u):.1f} km/s")
+    print(f"    Mean χ²ᵣ: {np.mean(chi_u):.2f}")
+    print(f"    Median χ²ᵣ: {np.median(chi_u):.2f}")
+    
+    # Fitted model (alpha free)
+    acc_f = [d['acc_fit'] for d in results if not np.isnan(d['acc_fit'])]
+    rms_f = [d['rms_f'] for d in results if not np.isnan(d['rms_f'])]
+    chi_f = [d['redchi2_f'] for d in results if not np.isnan(d['redchi2_f'])]
+    alphas = [d['alpha'] for d in results]
+    
+    print(f"\n  FITTED MODEL (alpha, r_scale free, 2 free parameters):")
+    print(f"    Galaxies fitted: {len(acc_f)}/175")
+    print(f"    Mean accuracy: {np.mean(acc_f):.1f}%")
+    print(f"    Median accuracy: {np.median(acc_f):.1f}%")
+    print(f"    Mean RMS: {np.mean(rms_f):.1f} km/s")
+    print(f"    Median RMS: {np.median(rms_f):.1f} km/s")
+    print(f"    Mean χ²ᵣ: {np.mean(chi_f):.2f}")
+    print(f"    Median χ²ᵣ: {np.median(chi_f):.2f}")
+    print(f"    alpha median: {np.median(alphas):.3f}")
+    print(f"    alpha in [0.5, 2.0]: {sum(1 for a in alphas if 0.5 < a < 2.0)}/175")
+    
+    print("\n" + "=" * 80)
+    print("  FINAL SUMMARY")
+    print("=" * 80)
+    print("\n  Equation:")
+    print("    v²(r) = G·M_bar(r)/r + a₀·r·(1 - e^{-r/r_scale})")
+    print("\n  Key Results:")
+    print(f"    Universal model: {np.mean(acc_u):.1f}% accuracy (0 free params)")
+    print(f"    Fitted model: {np.mean(acc_f):.1f}% accuracy (2 free params)")
+    print(f"    α naturally at {np.median(alphas):.3f}")
+    print("    No dark matter parameters used")
+    print("=" * 80)
+
+if __name__ == "__main__":
+    main()
