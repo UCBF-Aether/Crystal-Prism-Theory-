@@ -56,14 +56,14 @@ print("=" * 80)
 
 def generate_e8():
     roots = []
-    # 112 integer roots
+    # 112 integer roots: (±1, ±1, 0, 0, 0, 0, 0, 0)
     for i, j in combinations(range(8), 2):
         for s1, s2 in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
             v = np.zeros(8)
             v[i] = s1
             v[j] = s2
             roots.append(v)
-    # 128 half-integer roots
+    # 128 half-integer roots: (±½, ±½, ..., ±½) with even number of minus signs
     for signs in product([-1, 1], repeat=8):
         if sum(signs) % 4 == 0:
             roots.append(np.array(signs) / 2)
@@ -71,14 +71,22 @@ def generate_e8():
 
 roots = generate_e8()
 
-# Count root types correctly
+# Count root types correctly — FIXED
 integer_roots = 0
 half_roots = 0
 for r in roots:
-    if np.all(np.abs(r) == 1) or np.all(np.abs(r) == 0):
-        # Check if it's an integer root (only 0, ±1)
-        if np.all(np.abs(r) <= 1) and np.all(np.abs(r) >= 0):
-            integer_roots += 1
+    # Check if it's an integer root: all entries are 0 or ±1
+    # and exactly two entries are ±1
+    is_integer = True
+    nonzero_count = 0
+    for val in r:
+        if abs(val) == 1:
+            nonzero_count += 1
+        elif abs(val) != 0:
+            is_integer = False
+            break
+    if is_integer and nonzero_count == 2:
+        integer_roots += 1
     else:
         half_roots += 1
 
@@ -86,6 +94,8 @@ print(f"\n  Generated {len(roots)} E8 roots (expected 240)")
 print(f"  |α|² = 2: {np.allclose(np.sum(roots**2, axis=1), 2.0)}")
 print(f"  Integer roots: {integer_roots} (expected 112)")
 print(f"  Half-integer roots: {half_roots} (expected 128)")
+if integer_roots == 112 and half_roots == 128:
+    print("  ✅ CORRECT: Root type counts match expectations")
 
 # ============================================================================
 # PART 3: A5 PROJECTION — CONSTRUCTED
@@ -131,6 +141,8 @@ unique = np.array(unique)
 
 print(f"\n  Projected points: {len(projected)}")
 print(f"  Unique points: {len(unique)} (expected 137)")
+if len(unique) == 137:
+    print("  ✅ CORRECT: 137 unique points found")
 
 # ============================================================================
 # PART 5: DIFFERENCE LATTICE — CONSTRUCTED
@@ -191,7 +203,6 @@ if closest_r is not None:
     print(f"  Error: {abs(closest_r - target_r) / target_r * 100:.3f}%")
 else:
     print("\n  No shell with ≥12 vectors found near 2√2")
-    # Find the shell with most vectors near target
     for r, vecs in sorted(shells_dict.items()):
         if abs(r - target_r) < 0.5 and len(vecs) >= 12:
             print(f"  Found shell at r = {r:.6f} with {len(vecs)} vectors")
@@ -210,6 +221,8 @@ print("=" * 80)
 if closest_vecs is not None:
     vecs = np.array(closest_vecs)
     print(f"\n  Vectors in shell: {len(vecs)} (expected 12)")
+    if len(vecs) == 12:
+        print("  ✅ CORRECT: 12 vectors found")
     
     # 1. Check opposite pairs
     opp_pairs = 0
@@ -320,6 +333,9 @@ if closest_vecs is not None and basis is not None:
     print(f"\n  Scaled nearest-neighbor distance: {nn_scaled:.6f}")
     print(f"  Target: {target_r:.6f}")
     print(f"  Error: {abs(nn_scaled - target_r) / target_r * 100:.4f}%")
+    
+    if abs(nn_scaled - target_r) < 1e-6:
+        print("  ✅ EXACT: Nearest-neighbor distance is 2√2")
 
 # ============================================================================
 # PART 10: COMPLETE VALIDATION SUMMARY
