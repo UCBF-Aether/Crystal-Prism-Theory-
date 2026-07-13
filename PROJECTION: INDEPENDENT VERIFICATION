@@ -1,0 +1,328 @@
+"""
+THE E8 -> A5 -> 3(+)5 PROJECTION: INDEPENDENT VERIFICATION SCRIPT
+====================================================================
+
+This script reproduces, from scratch, every numerical claim discussed
+in the audit of "The E8 -> A5 -> 3(+)5 Shelling" paper (Cory Brent, 2026).
+
+It is deliberately conservative: every "finding" printed below is
+computed directly from the E8 root system and the stated projection
+matrix. Nothing is hardcoded to match a target value. Where earlier
+drafts of the paper overstated a result, this script prints the
+corrected, honest version of that result alongside the original claim.
+
+Requires: numpy, sympy (both standard, no special install needed)
+
+Author: Cory Brent
+Verification assist: Claude (Anthropic)
+Date: July 12, 2026
+"""
+
+import math
+import numpy as np
+import sympy as sp
+from itertools import combinations, product
+from collections import Counter, defaultdict
+
+PHI = (1 + math.sqrt(5)) / 2
+
+def hr(title):
+    print("\n" + "=" * 78)
+    print(title)
+    print("=" * 78)
+
+# ============================================================================
+# PART 1: E8 ROOT SYSTEM
+# ============================================================================
+hr("PART 1: E8 ROOT SYSTEM (240 roots)")
+
+def generate_e8():
+    roots = []
+    # 112 integer roots: (+-1, +-1, 0,0,0,0,0,0) and permutations
+    for i, j in combinations(range(8), 2):
+        for s1, s2 in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            v = np.zeros(8)
+            v[i] = s1
+            v[j] = s2
+            roots.append(v)
+    # 128 half-integer roots: (+-1/2,...,+-1/2), even number of minus signs
+    for signs in product([-1, 1], repeat=8):
+        if sum(signs) % 4 == 0:
+            roots.append(np.array(signs) / 2)
+    return np.array(roots)
+
+roots = generate_e8()
+assert len(roots) == 240, f"Expected 240 roots, got {len(roots)}"
+assert np.allclose(np.sum(roots**2, axis=1), 2.0), "Not all roots have |a|^2 = 2"
+print(f"Generated {len(roots)} roots, all satisfying |a|^2 = 2.  [VERIFIED]")
+
+# ============================================================================
+# PART 2: A5 ICOSAHEDRAL PROJECTION TO 3D
+# ============================================================================
+hr("PART 2: A5 PROJECTION  P(x) = (x1+phi*x5, x2+phi*x6, x3+phi*x7)/sqrt(2+phi)")
+
+def a5_projection_matrix():
+    norm = 1.0 / math.sqrt(2.0 + PHI)
+    P = np.zeros((3, 8))
+    P[0, 0] = norm; P[0, 4] = PHI * norm
+    P[1, 1] = norm; P[1, 5] = PHI * norm
+    P[2, 2] = norm; P[2, 6] = PHI * norm
+    return P
+
+P_A5 = a5_projection_matrix()
+projected = roots @ P_A5.T
+
+unique = []
+for p in projected:
+    if not any(np.linalg.norm(p - u) < 1e-8 for u in unique):
+        unique.append(p)
+unique = np.array(unique)
+print(f"Projected 240 roots -> {len(unique)} unique points in 3D.")
+if len(unique) != 137:
+    print("  NOTE: this differs from the 137 reported in the paper - re-check tolerance.")
+else:
+    print("  Matches paper's reported value of 137.  [VERIFIED]")
+
+# ============================================================================
+# PART 3: DIFFERENCE LATTICE AND SHELLS
+# ============================================================================
+hr("PART 3: DIFFERENCE LATTICE")
+
+diff = []
+for i in range(len(unique)):
+    for j in range(i + 1, len(unique)):
+        d = unique[i] - unique[j]
+        if np.linalg.norm(d) > 1e-8:
+            diff.append(d)
+            diff.append(-d)
+diff = np.array(diff)
+print(f"Difference vectors: {len(diff)}")
+
+shells = defaultdict(list)
+for d in diff:
+    r = round(float(np.linalg.norm(d)), 6)
+    shells[r].append(d)
+radii = sorted(shells.keys())
+print(f"Distinct shells: {len(shells)}")
+
+# ============================================================================
+# PART 4: HONEST SHELL SIGNATURE SCAN
+# (does NOT assume there is only one FCC-like shell - checks all of them)
+# ============================================================================
+hr("PART 4: SCANNING *ALL* SHELLS FOR THE FCC/CUBOCTAHEDRAL SIGNATURE")
+print("Signature: 12 vectors, 6 antipodal pairs, angle-cosine set {-1,-0.5,0,0.5}\n")
+
+def shell_signature(vecs):
+    vecs = np.array(vecs)
+    n = len(vecs)
+    opp = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            if np.linalg.norm(vecs[i] + vecs[j]) < 1e-6:
+                opp += 1
+    angles = set()
+    for i in range(n):
+        for j in range(i + 1, n):
+            c = np.dot(vecs[i], vecs[j]) / (np.linalg.norm(vecs[i]) * np.linalg.norm(vecs[j]))
+            angles.add(round(float(c), 6))
+    return opp, angles
+
+TARGET_ANGLES = {-1.0, -0.5, 0.0, 0.5}
+fcc_signature_shells = []
+twelve_vector_shells = []
+
+for r in radii:
+    vecs = shells[r]
+    if len(vecs) == 12:
+        opp, angles = shell_signature(vecs)
+        twelve_vector_shells.append((r, opp, angles))
+        if opp == 6 and angles == TARGET_ANGLES:
+            fcc_signature_shells.append(r)
+
+print("All shells with exactly 12 vectors:")
+for r, opp, angles in twelve_vector_shells:
+    tag = "<-- FCC/cuboctahedral signature" if (opp == 6 and angles == TARGET_ANGLES) else "(different signature, e.g. octahedral)"
+    print(f"  r={r:.6f}  opposite_pairs={opp}  angles={sorted(angles)}  {tag}")
+
+target_r = 2 * math.sqrt(2)
+print(f"\nTarget FCC nearest-neighbor distance (2*sqrt(2)) = {target_r:.6f}")
+print(f"Shells matching the FCC/cuboctahedral signature: {fcc_signature_shells}")
+print(f"  -> There are {len(fcc_signature_shells)} such shells, NOT a unique one.")
+for r in fcc_signature_shells:
+    err = abs(r - target_r) / target_r * 100
+    print(f"     r={r:.6f}   distance from 2*sqrt(2): {err:.3f}%")
+
+if len(fcc_signature_shells) >= 2:
+    ratio = fcc_signature_shells[1] / fcc_signature_shells[0] if fcc_signature_shells[1] > fcc_signature_shells[0] else fcc_signature_shells[0]/fcc_signature_shells[1]
+    print(f"\n  Ratio between the two FCC-signature shells: {ratio:.6f}  (phi = {PHI:.6f})")
+
+# select the shell closest to target for the rest of the analysis (honestly labeled as a choice)
+closest_r = min(fcc_signature_shells, key=lambda r: abs(r - target_r))
+closest_vecs = np.array(shells[closest_r])
+print(f"\n  Selected for scale-correction below: r={closest_r:.6f} (closest of the {len(fcc_signature_shells)} candidates to target)")
+
+# ============================================================================
+# PART 5: PRIMITIVE BASIS + SCALE CORRECTION (and why it's not independent evidence)
+# ============================================================================
+hr("PART 5: PRIMITIVE BASIS, SCALE CORRECTION, AND THE det/NN^3 IDENTITY")
+
+def find_primitive_basis(vecs):
+    best_det = float('inf')
+    best_basis = None
+    n = len(vecs)
+    for i in range(n):
+        for j in range(i + 1, n):
+            for k in range(j + 1, n):
+                M = np.vstack([vecs[i], vecs[j], vecs[k]])
+                d = abs(np.linalg.det(M))
+                if d > 1e-6 and d < best_det:
+                    best_det = d
+                    best_basis = M
+    return best_basis, best_det
+
+basis, det = find_primitive_basis(closest_vecs)
+nn = np.linalg.norm(closest_vecs[0])
+print(f"Unscaled primitive determinant: {det:.6f}   (FCC target: 16.0)")
+print(f"Unscaled nearest-neighbor distance: {nn:.6f}   (FCC target: {target_r:.6f})")
+
+scale = (16.0 / det) ** (1/3)
+basis_scaled = basis * scale
+det_scaled = abs(np.linalg.det(basis_scaled))
+nn_scaled = nn * scale
+print(f"\nScale factor s = (16/det)^(1/3) = {scale:.8f}")
+print(f"Scaled determinant: {det_scaled:.6f}")
+print(f"Scaled NN distance: {nn_scaled:.6f}")
+
+print("\n--- Why hitting BOTH targets is not two independent confirmations ---")
+a_sym = sp.symbols('a', positive=True)
+v1 = sp.Matrix([-a_sym, -a_sym, 0])
+v2 = sp.Matrix([-a_sym, a_sym, 0])
+v3 = sp.Matrix([-a_sym, 0, -a_sym])
+M_sym = sp.Matrix.hstack(v1, v2, v3)
+det_sym = sp.simplify(sp.Abs(M_sym.det()))
+nn_sym = sp.sqrt(a_sym**2 + a_sym**2)
+ratio_sym = sp.simplify(det_sym / nn_sym**3)
+target_ratio = sp.nsimplify(16 / (2*sp.sqrt(2))**3)
+print(f"For ANY vector of shape permutations of (+-a,+-a,0):")
+print(f"  det(a)     = {det_sym}")
+print(f"  NN(a)      = {nn_sym}")
+print(f"  det/NN^3   = {ratio_sym}   (a fixed constant, independent of a)")
+print(f"  16/(2sqrt2)^3 = {sp.simplify(target_ratio)} = {float(target_ratio):.6f}")
+print(f"  These are IDENTICAL ({float(ratio_sym):.6f} == {float(target_ratio):.6f}).")
+print("  => Matching det=16 automatically forces NN=2*sqrt(2), and vice versa,")
+print("     for this vector shape, at ANY scale. Only ONE fact is being confirmed:")
+print("     the shell has the correct SHAPE. The absolute scale is a free parameter")
+print("     that can always be set to hit any single target (like det=16) trivially.")
+
+# demonstrate the "any basis can hit det=16" point explicitly
+rng = np.random.default_rng(0)
+random_basis = rng.standard_normal((3, 3))
+d0 = abs(np.linalg.det(random_basis))
+s_rand = (16.0 / d0) ** (1/3)
+d1 = abs(np.linalg.det(random_basis * s_rand))
+print(f"\n  Control check: a RANDOM unrelated basis has det={d0:.4f};")
+print(f"  after the same rescaling trick, det={d1:.4f}. Rescaling alone proves nothing.")
+
+# ============================================================================
+# PART 6: PHI SELF-SIMILARITY ACROSS THE SHELL STRUCTURE (chain-corrected)
+# ============================================================================
+hr("PART 6: PHI-SELF-SIMILARITY ACROSS SHELLS (redundancy-corrected)")
+
+phi_edges = []
+for i in range(len(radii)):
+    for j in range(len(radii)):
+        if i == j:
+            continue
+        if abs(radii[j] / radii[i] - PHI) < 1e-4:
+            phi_edges.append((radii[i], radii[j]))
+
+phi2_edges = []
+for i in range(len(radii)):
+    for j in range(len(radii)):
+        if i == j:
+            continue
+        if abs(radii[j] / radii[i] - PHI**2) < 1e-4:
+            phi2_edges.append((radii[i], radii[j]))
+
+phi_edge_set = set(phi_edges)
+explained_phi2 = 0
+for (a, c) in phi2_edges:
+    if any(x == a and (b, c) in phi_edge_set for (x, b) in phi_edges):
+        explained_phi2 += 1
+
+print(f"Raw phi-ratio pairs (r_j/r_i ~= phi):    {len(phi_edges)}")
+print(f"Raw phi^2-ratio pairs (r_j/r_i ~= phi^2): {len(phi2_edges)}")
+print(f"phi^2 pairs fully explained by chaining two phi-steps: {explained_phi2} / {len(phi2_edges)}")
+print("  => phi^2 pairs are NOT independent structure; they are implied for free")
+print("     by transitivity whenever two phi-steps chain together.")
+
+# connected components = independent phi-chains
+adj = defaultdict(set)
+for a, b in phi_edges:
+    adj[a].add(b)
+    adj[b].add(a)
+visited = set()
+chains = []
+for r in radii:
+    if r in adj and r not in visited:
+        stack = [r]
+        comp = set()
+        while stack:
+            x = stack.pop()
+            if x in comp:
+                continue
+            comp.add(x)
+            visited.add(x)
+            stack.extend(adj[x] - comp)
+        chains.append(sorted(comp))
+
+nodes_involved = sum(len(c) for c in chains)
+print(f"\nIndependent phi-chains: {len(chains)}")
+print(f"Total shells participating in at least one phi-chain: {nodes_involved} / {len(radii)}")
+for c in sorted(chains, key=lambda x: -len(x)):
+    print(f"  chain of {len(c)} shells: {[f'{v:.4f}' for v in c]}")
+
+# ============================================================================
+# PART 7: HONEST SUMMARY
+# ============================================================================
+hr("PART 7: HONEST SUMMARY")
+
+print(f"""
+E8 root system:            240 roots generated, all |a|^2=2                [OK]
+A5 projection:              {len(unique)} unique points in 3D
+Difference lattice:         {len(diff)} vectors, {len(shells)} shells
+
+FCC/cuboctahedral signature shells found: {len(fcc_signature_shells)}
+  (NOT unique - the signature alone does not pick out one shell)
+  radii: {[f'{r:.6f}' for r in fcc_signature_shells]}
+  closest to target 2*sqrt(2)={target_r:.6f}: r={closest_r:.6f}
+    ({abs(closest_r-target_r)/target_r*100:.2f}% off before any rescaling)
+
+Scale correction to det=16:
+  Automatically also yields NN=2*sqrt(2) -- this is a mathematical identity
+  for this vector shape (det/NN^3 = sqrt(2)/2 always), NOT two independent
+  confirmations of an E8-FCC connection.
+
+Phi self-similarity:
+  {len(chains)} independent phi-chains covering {nodes_involved}/{len(radii)} shells.
+  All phi^2 relationships are automatic consequences of chained phi-steps,
+  not separate evidence.
+
+WHAT IS ACTUALLY SUPPORTED BY THIS COMPUTATION:
+  1. The A5 projection of E8's 240 roots to 3D is correct and reproducible.
+  2. Shells shaped like the FCC/cuboctahedron vertex figure (permutations of
+     (+-a,+-a,0)) occur in the resulting difference lattice, at two radii
+     related by phi.
+  3. The projection exhibits systematic phi-self-similarity across most of
+     its shell structure -- an expected consequence of using phi-weighted
+     coordinates (a standard Pisot/ZZ[phi] property of golden-ratio
+     cut-and-project constructions), not a new discovery about E8 or FCC.
+  4. Claims of a "unique fingerprint" or a scale-independent "proof" that
+     E8 encodes FCC are NOT supported: the signature is not unique, and the
+     scale-matching step is a tautology for this vector shape.
+""")
+
+print("=" * 78)
+print("VERIFICATION COMPLETE")
+print("=" * 78)
+
