@@ -1,0 +1,103 @@
+import math
+import numpy as np
+
+print("=" * 80)
+print("C₄₄ — EXTRACTING V''(r) FROM SHELL STRUCTURE")
+print("=" * 80)
+print()
+
+# Lattice constant
+a = math.sqrt(3 * math.pi / 5) * 1e-15
+R0 = a / math.sqrt(2)
+V_cell = a**3 / 4
+
+print(f"a = {a:.6e} m")
+print(f"R0 = a/√2 = {R0:.6e} m")
+print(f"V_cell = {V_cell:.6e} m³")
+print()
+
+# Known FCC shell structure from the E8 projection
+# Shell 1: r = R0, 12 neighbors, x²y²/r⁴ = 1/4 for 4 neighbors
+# Shell 3: r = √3 R0, 24 neighbors, x²y²/r⁴ = 1/36 for 12 neighbors
+# Shell 4: r = 2R0, 12 neighbors, x²y²/r⁴ = 1/4 for 4 neighbors
+
+shells = [
+    {'r': R0, 'count': 12, 'term_sum': 1.0},       # 4 × 1/4 = 1
+    {'r': math.sqrt(3) * R0, 'count': 24, 'term_sum': 12/36},  # 12 × 1/36 = 1/3
+    {'r': 2 * R0, 'count': 12, 'term_sum': 1.0},   # 4 × 1/4 = 1
+]
+
+# We know C₄₄ = 4.6205e34
+C44_target = 4.6205e34
+
+# C₄₄ = (1/V_cell) × Σ V''(r_n) × (x²y²/r⁴)
+# Rearranging: Σ V''(r_n) × (x²y²/r⁴) = C₄₄ × V_cell
+
+target_sum = C44_target * V_cell
+print(f"Target sum: Σ V''(r_n) × (x²y²/r⁴) = {target_sum:.6e} J/m²")
+print()
+
+print("Shell contributions needed:")
+
+# We need to find V''(r) for each shell
+# Let's assume V''(r) follows a power law: V''(r) = A / r^n
+
+# For shell 1: contribution = V''(R0) × 1.0
+# For shell 3: contribution = V''(√3R0) × 1/3
+# For shell 4: contribution = V''(2R0) × 1.0
+
+# If V''(r) = A / r^n, then:
+# V''(R0) = A / R0^n
+# V''(√3R0) = A / (√3 R0)^n = A / (3^(n/2) R0^n)
+# V''(2R0) = A / (2^n R0^n)
+
+# Total sum = A/R0^n × [1 + 1/(3 * 3^(n/2)) + 1/2^n]
+
+# We can solve for A and n
+
+def compute_sum(n, A):
+    term1 = 1.0
+    term2 = (1/3) / (3 ** (n/2))
+    term3 = 1 / (2 ** n)
+    return (A / (R0 ** n)) * (term1 + term2 + term3)
+
+# Search for n and A that give the target sum
+best_n = None
+best_A = None
+best_error = float('inf')
+
+for n in range(1, 20):
+    n_val = n / 2  # 0.5, 1.0, 1.5, 2.0, ...
+    # Solve for A
+    A = target_sum * (R0 ** n_val) / (1 + 1/(3 * 3**(n_val/2)) + 1/(2**n_val))
+    
+    # Compute V''(R0)
+    Vpp_R0 = A / (R0 ** n_val)
+    
+    # Check if Vpp_R0 is reasonable
+    if 1e-11 < Vpp_R0 < 1e-9:
+        error = abs(compute_sum(n_val, A) - target_sum) / target_sum
+        if error < best_error:
+            best_error = error
+            best_n = n_val
+            best_A = A
+
+if best_n is not None:
+    print(f"Found solution:")
+    print(f"  V''(r) = {best_A:.6e} / r^{best_n:.1f}")
+    print(f"  V''(R0) = {best_A / (R0 ** best_n):.6e} J/m²")
+    print()
+    
+    # Compute individual contributions
+    Vpp_R0 = best_A / (R0 ** best_n)
+    Vpp_R3 = best_A / ((math.sqrt(3) * R0) ** best_n)
+    Vpp_R2 = best_A / ((2 * R0) ** best_n)
+    
+    print("Individual shell contributions:")
+    print(f"  Shell 1 (R0): {Vpp_R0:.6e} × 1.0 = {Vpp_R0:.6e}")
+    print(f"  Shell 3 (√3R0): {Vpp_R3:.6e} × 1/3 = {Vpp_R3/3:.6e}")
+    print(f"  Shell 4 (2R0): {Vpp_R2:.6e} × 1.0 = {Vpp_R2:.6e}")
+    print()
+    print(f"Total: {compute_sum(best_n, best_A):.6e} (target: {target_sum:.6e})")
+else:
+    print("No solution found.")
