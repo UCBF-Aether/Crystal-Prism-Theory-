@@ -16,7 +16,23 @@ of ongoing work and will be presented in a companion paper.
 VALIDATION:
 - SPARC galaxies (176): 6.09% mean residual on high-quality sample
 - Galaxy clusters (35): 6.7% mean residual
-- JWST high-z galaxies (6): Real data from published sources
+- JWST high-z galaxies (6): MOCK/SYNTHETIC profiles for numerical testing
+
+NOTE ON JWST HIGH-Z DATA:
+=========================
+The radial data tables for JWST galaxies in this module are SYNTHETIC PROFILES.
+They are mathematically generated mock distributions engineered to mirror the
+global physical boundary constraints (z, effective radius, and peak velocity
+limits) reported in primary literature (e.g., Xu+24, Scholtz+25, Hashimoto+18).
+
+Purpose: This serves as a numerical testbed to evaluate how the expansion-coupled
+a0(z) scaling engine behaves across continuous radial fields in early-universe
+systems.
+
+Literature references for boundary constraints:
+- GN-z11: Xu+24 (JWST NIRSpec IFU, z=10.60, V_max≈183 km/s)
+- JADES-GS-z14-0: Scholtz+25 (ALMA, z=14.18, V_max≈187 km/s)
+- MACS1149-JD1: Hashimoto+18 (ALMA, z=9.11, V_max≈202 km/s)
 
 Author: Cory Brent (UCBF V13)
 Date: 2026-08-03
@@ -95,7 +111,7 @@ class UCBFConstants:
 C = UCBFConstants()
 
 # ============================================================
-# PART 2: SPARC DATA LOADER (Real Data)
+# PART 2: SPARC DATA LOADER (REAL DATA)
 # ============================================================
 
 ZENODO_URL = "https://zenodo.org/records/16284118/files/Rotmod_LTG.zip"
@@ -273,30 +289,45 @@ def load_sparc_full(sparc_dir="sparc_data", verbose=True, include_m31=True):
     return galaxies
 
 # ============================================================
-# PART 3: REAL JWST DATA (From Published Sources)
+# PART 3: MOCK/SYNTHETIC JWST DATA
 # ============================================================
 
 def load_jwst_highz_data(verbose=True):
     """
-    Load REAL JWST high-redshift data from published sources.
+    Load MOCK/SYNTHETIC high-redshift galaxy profiles.
     
-    Data sources:
-    - GN-z11: Bunker+2024, Xu+2024 (NIRSpec IFU)
-    - JADES-GS-z14-0: Carniani+2024, Schouws+2025 (ALMA)
-    - CEERS-93316: Carniani+2024 (NIRSpec IFU)
-    - GLASS-z12: Castellano+2022, Tacchella+2023 (NIRSpec IFU)
-    - MACS1149-JD1: Hashimoto+2018 (ALMA)
-    - CEERS-1028: Arrabal Haro+2023 (NIRSpec)
+    IMPORTANT: These are SYNTHETIC PROFILES - NOT REAL DATA!
+    
+    These profiles are mathematically generated to mirror the global
+    physical boundary constraints (z, effective radius, and peak velocity
+    limits) reported in primary literature.
+    
+    Purpose: Numerical testbed for evaluating the expansion-coupled
+    a0(z) scaling engine across continuous radial fields.
+    
+    Literature constraints used:
+    - GN-z11: Xu+24 (JWST NIRSpec IFU, z=10.60, V_max≈183 km/s)
+    - JADES-GS-z14-0: Scholtz+25 (ALMA, z=14.18, V_max≈187 km/s)
+    - CEERS-93316: Carniani+24 (NIRSpec IFU, z=4.90, V_max≈248 km/s)
+    - GLASS-z12: Tacchella+23 (NIRSpec IFU, z=12.40, V_max≈170 km/s)
+    - MACS1149-JD1: Hashimoto+18 (ALMA, z=9.11, V_max≈202 km/s)
+    - CEERS-1028: Arrabal Haro+23 (NIRSpec, z=7.50, V_max≈220 km/s)
     """
     
-    JWST_DATA = {
+    # ================================================================
+    # WARNING: THESE ARE SYNTHETIC/MOCK PROFILES
+    # They are mathematically generated, not real observational data
+    # ================================================================
+    
+    MOCK_JWST_DATA = {
         'GN-z11': {
             'z': 10.60,
             'R_kpc': np.array([0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00]),
             'V_obs': np.array([60.2, 85.0, 110.1, 135.4, 155.0, 170.2, 177.3, 180.0, 175.1, 165.2]),
             'V_err': np.array([25.4, 22.1, 20.0, 17.5, 15.1, 14.8, 14.0, 15.6, 18.2, 20.1]),
             'V_gas': np.array([12.5, 26.4, 45.1, 60.8, 72.3, 80.5, 85.1, 88.4, 85.0, 80.2]),
-            'source': 'Bunker+2024 / Xu+2024 (NIRSpec IFU)',
+            'source': 'MOCK PROFILE - Constrained by Xu+24',
+            'data_type': 'SYNTHETIC/MOCK',
         },
         'JADES-GS-z14-0': {
             'z': 14.32,
@@ -304,7 +335,8 @@ def load_jwst_highz_data(verbose=True):
             'V_obs': np.array([38.5, 75.1, 115.2, 150.0, 175.4, 190.1, 195.2, 185.0]),
             'V_err': np.array([20.4, 18.0, 15.5, 14.2, 12.9, 15.0, 14.7, 16.1]),
             'V_gas': np.array([10.2, 24.1, 45.6, 68.9, 98.1, 115.4, 120.9, 114.5]),
-            'source': 'Carniani+2024 / Schouws+2025 (ALMA)',
+            'source': 'MOCK PROFILE - Constrained by Scholtz+25',
+            'data_type': 'SYNTHETIC/MOCK',
         },
         'CEERS-93316': {
             'z': 4.90,
@@ -312,7 +344,8 @@ def load_jwst_highz_data(verbose=True):
             'V_obs': np.array([120.4, 170.1, 210.5, 235.0, 245.2, 248.0, 242.3, 234.1, 225.0, 210.2]),
             'V_err': np.array([15.2, 12.0, 10.5, 9.8, 10.2, 11.1, 10.0, 12.5, 13.4, 15.1]),
             'V_gas': np.array([35.4, 72.1, 115.4, 148.9, 172.5, 185.4, 186.2, 175.1, 158.0, 140.2]),
-            'source': 'Carniani+2024 (NIRSpec IFU)',
+            'source': 'MOCK PROFILE - Constrained by Carniani+24',
+            'data_type': 'SYNTHETIC/MOCK',
         },
         'GLASS-z12': {
             'z': 12.40,
@@ -320,7 +353,8 @@ def load_jwst_highz_data(verbose=True):
             'V_obs': np.array([50.1, 90.4, 125.0, 150.2, 165.4, 170.0, 162.3]),
             'V_err': np.array([20.2, 18.5, 15.1, 13.0, 12.8, 13.2, 14.9]),
             'V_gas': np.array([14.5, 35.6, 58.9, 75.4, 88.9, 92.5, 88.1]),
-            'source': 'Castellano+2022 / Tacchella+2023 (NIRSpec IFU)',
+            'source': 'MOCK PROFILE - Constrained by Tacchella+23',
+            'data_type': 'SYNTHETIC/MOCK',
         },
         'MACS1149-JD1': {
             'z': 9.11,
@@ -328,7 +362,8 @@ def load_jwst_highz_data(verbose=True):
             'V_obs': np.array([70.2, 115.4, 155.0, 186.2, 200.1, 205.4, 200.0, 191.2]),
             'V_err': np.array([18.4, 16.0, 14.2, 12.1, 11.5, 12.0, 13.4, 16.2]),
             'V_gas': np.array([18.4, 42.5, 68.9, 95.4, 115.6, 130.5, 135.2, 122.4]),
-            'source': 'Hashimoto+2018 (ALMA)',
+            'source': 'MOCK PROFILE - Constrained by Hashimoto+18',
+            'data_type': 'SYNTHETIC/MOCK',
         },
         'CEERS-1028': {
             'z': 7.50,
@@ -336,12 +371,13 @@ def load_jwst_highz_data(verbose=True):
             'V_obs': np.array([110.1, 160.4, 195.2, 215.0, 220.3, 210.4]),
             'V_err': np.array([15.4, 12.1, 10.0, 9.5, 11.2, 15.0]),
             'V_gas': np.array([22.1, 55.4, 92.5, 124.1, 146.3, 140.2]),
-            'source': 'Arrabal Haro+2023 (NIRSpec)',
+            'source': 'MOCK PROFILE - Constrained by Arrabal Haro+23',
+            'data_type': 'SYNTHETIC/MOCK',
         },
     }
     
     galaxies = {}
-    for name, data in JWST_DATA.items():
+    for name, data in MOCK_JWST_DATA.items():
         # Ensure arrays are numpy arrays
         galaxies[name] = {
             'name': name,
@@ -355,17 +391,19 @@ def load_jwst_highz_data(verbose=True):
             'n_pts': len(data['R_kpc']),
             'quality': 'high',
             'source': data['source'],
+            'data_type': data['data_type'],
         }
     
     if verbose:
-        print(f"  Loaded {len(galaxies)} REAL JWST high-redshift galaxies")
+        print(f"  Loaded {len(galaxies)} MOCK/SYNTHETIC high-redshift profiles")
+        print("  WARNING: These are NOT real observational data!")
         for name, gal in galaxies.items():
-            print(f"    {name}: z={gal['z']:.2f}, N={gal['n_pts']} points")
+            print(f"    {name}: z={gal['z']:.2f}, N={gal['n_pts']} points (MOCK)")
     
     return galaxies
 
 # ============================================================
-# PART 4: CLUSTER DATA (Real Data)
+# PART 4: CLUSTER DATA (REAL Data)
 # ============================================================
 
 def load_clusters_full():
@@ -449,22 +487,23 @@ def load_clusters_full():
     return clusters
 
 def load_all_data(verbose=True):
-    """Load ALL data: SPARC, JWST, and Clusters."""
+    """Load ALL data: SPARC (REAL), JWST (MOCK), and Clusters (REAL)."""
     if verbose:
         print("\n" + "=" * 75)
         print("LOADING ALL DATA")
         print("=" * 75)
     
     if verbose:
-        print("\n[SPARC] Local universe (176 galaxies):")
+        print("\n[SPARC] Local universe (176 galaxies) - REAL DATA:")
     sparc = load_sparc_full(verbose=verbose)
     
     if verbose:
-        print("\n[JWST] High-redshift (6 galaxies):")
+        print("\n[JWST] High-redshift (6 galaxies) - MOCK/SYNTHETIC PROFILES:")
+        print("  WARNING: These are NOT real observational data!")
     jwst = load_jwst_highz_data(verbose=verbose)
     
     if verbose:
-        print("\n[CLUSTERS] (35 clusters):")
+        print("\n[CLUSTERS] (35 clusters) - REAL DATA:")
     clusters = load_clusters_full()
     if verbose:
         print(f"  Loaded {len(clusters)} clusters")
@@ -737,7 +776,7 @@ def plot_sparc_residual_distribution(results, save=True):
     plt.show()
 
 def plot_jwst_overlay(result, data, save=True):
-    """Plot UCBF V13 prediction overlaid on REAL JWST data."""
+    """Plot UCBF V13 prediction overlaid on MOCK JWST data."""
     gal_name = data['name']
     z = data['z']
     R = data['R_kpc']
@@ -754,7 +793,7 @@ def plot_jwst_overlay(result, data, save=True):
     ax1 = axes[0]
     ax1.errorbar(R, V_obs, yerr=V_err, fmt='o', color='#1f77b4', 
                 markersize=8, capsize=3, elinewidth=1.5, alpha=0.9,
-                label=f'{gal_name} (JWST/NIRSpec)')
+                label=f'{gal_name} (MOCK DATA)')
     
     R_smooth = np.linspace(0.01, max(R) * 1.05, 100)
     V_gas_int = interp1d(R, V_gas, kind='linear', fill_value='extrapolate')(R_smooth)
@@ -778,7 +817,7 @@ def plot_jwst_overlay(result, data, save=True):
     
     ax1.set_xlabel('R (kpc)', fontsize=12)
     ax1.set_ylabel('V (km/s)', fontsize=12)
-    ax1.set_title(f'{gal_name} (z={z:.2f})\n'
+    ax1.set_title(f'{gal_name} (z={z:.2f}) - MOCK PROFILE\n'
                  f'Res: {result["mean_abs_pct"]:.1f}% | '
                  f'ϒ_disk={ups_disk:.2f}, ϒ_bulge={ups_bul:.2f}\n'
                  f'a0(z)/a0(0) = {ps_smooth["Hz_H0"]:.2f}x', fontsize=11)
@@ -815,19 +854,19 @@ def plot_jwst_overlay(result, data, save=True):
     ax2.legend(loc='lower right', fontsize=9)
     ax2.grid(True, alpha=0.25)
     
-    plt.suptitle(f'UCBF V13 — {gal_name} JWST Comparison\n'
-                f'Source: {data["source"]}', 
+    plt.suptitle(f'UCBF V13 — {gal_name} MOCK Profile Comparison\n'
+                f'Source: {data["source"]} | DATA TYPE: {data["data_type"]}', 
                 fontsize=14, fontweight='bold')
     plt.tight_layout()
     
     if save:
-        plt.savefig(f'UCBF_V13_{gal_name}_JWST_Overlay.png', dpi=200, bbox_inches='tight')
-        print(f"✓ Saved: UCBF_V13_{gal_name}_JWST_Overlay.png")
+        plt.savefig(f'UCBF_V13_{gal_name}_MOCK_Comparison.png', dpi=200, bbox_inches='tight')
+        print(f"✓ Saved: UCBF_V13_{gal_name}_MOCK_Comparison.png")
     
     plt.show()
 
 def plot_all_jwst_comparison(results_dict, save=True):
-    """Plot all JWST comparisons in a grid."""
+    """Plot all JWST mock comparisons in a grid."""
     n_galaxies = len(results_dict)
     n_cols = min(3, n_galaxies)
     n_rows = (n_galaxies + n_cols - 1) // n_cols
@@ -870,7 +909,7 @@ def plot_all_jwst_comparison(results_dict, save=True):
         ax.set_ylim(0, y_max)
         ax.set_xlim(0, max(R) * 1.2)
         
-        ax.set_title(f"{name}\nz={z:.2f} | Res={result['mean_abs_pct']:.1f}%",
+        ax.set_title(f"{name} (MOCK)\nz={z:.2f} | Res={result['mean_abs_pct']:.1f}%",
                     fontsize=9)
         ax.set_xlabel('R (kpc)', fontsize=8)
         ax.set_ylabel('V (km/s)', fontsize=8)
@@ -879,14 +918,14 @@ def plot_all_jwst_comparison(results_dict, save=True):
     for idx in range(n_galaxies, len(axes)):
         axes[idx].set_visible(False)
     
-    plt.suptitle('UCBF V13 — REAL JWST High-Redshift Galaxy Comparisons\n'
-                'Red: UCBF V13 prediction | Blue: JWST/NIRSpec observations',
+    plt.suptitle('UCBF V13 — MOCK High-Redshift Galaxy Comparisons\n'
+                'Red: UCBF V13 prediction | Blue: MOCK Profiles (NOT REAL DATA)',
                 fontsize=14, fontweight='bold')
     plt.tight_layout()
     
     if save:
-        plt.savefig('UCBF_V13_All_JWST_Comparisons.png', dpi=200, bbox_inches='tight')
-        print("✓ Saved: UCBF_V13_All_JWST_Comparisons.png")
+        plt.savefig('UCBF_V13_All_MOCK_Comparisons.png', dpi=200, bbox_inches='tight')
+        print("✓ Saved: UCBF_V13_All_MOCK_Comparisons.png")
     
     plt.show()
 
@@ -910,7 +949,7 @@ def plot_cosmic_validation(results_dict, save=True):
     ax1.axhline(10, color='orange', linestyle='--', alpha=0.5, label='10% threshold')
     ax1.set_xlabel('Redshift z', fontsize=12)
     ax1.set_ylabel('Mean Absolute Residual (%)', fontsize=12)
-    ax1.set_title('UCBF V13 Performance vs Redshift\n'
+    ax1.set_title('UCBF V13 Performance vs Redshift (MOCK DATA)\n'
                  f'Mean: {np.mean(residuals):.1f}% | Median: {np.median(residuals):.1f}%',
                  fontsize=11)
     ax1.legend()
@@ -928,20 +967,20 @@ def plot_cosmic_validation(results_dict, save=True):
     
     ax2.set_xlabel('Redshift z', fontsize=12)
     ax2.set_ylabel('a0(z) / a0(0) = H(z)/H0', fontsize=12)
-    ax2.set_title('Cosmic Evolution of Acceleration Scale\n'
+    ax2.set_title('Cosmic Evolution of Acceleration Scale (MOCK DATA)\n'
                  f'Scaling factor: {min(a0_ratios):.2f}x - {max(a0_ratios):.2f}x',
                  fontsize=11)
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     
-    plt.suptitle('UCBF V13 Validated Across Cosmic Time\n'
+    plt.suptitle('UCBF V13 Validated Across Cosmic Time (MOCK Profiles)\n'
                 'From z=0 to z=14.3 with Zero Dark Matter',
                 fontsize=14, fontweight='bold')
     plt.tight_layout()
     
     if save:
-        plt.savefig('UCBF_V13_Cosmic_Validation.png', dpi=200, bbox_inches='tight')
-        print("✓ Saved: UCBF_V13_Cosmic_Validation.png")
+        plt.savefig('UCBF_V13_Cosmic_Validation_MOCK.png', dpi=200, bbox_inches='tight')
+        print("✓ Saved: UCBF_V13_Cosmic_Validation_MOCK.png")
     
     plt.show()
 
@@ -1004,9 +1043,9 @@ def main():
     print("  • Full derivation: In progress (companion paper)")
     print("=" * 75)
     print("\nDATA SUMMARY:")
-    print("  • SPARC: 176 galaxies (local universe, z=0)")
-    print("  • JWST: 6 galaxies (high-redshift, z=4.9-14.3) — REAL DATA")
-    print("  • Clusters: 35 clusters (Vikhlinin+2006 + CLASH)")
+    print("  • SPARC: 176 galaxies (local universe, z=0) — REAL DATA")
+    print("  • JWST: 6 galaxies (high-redshift, z=4.9-14.3) — MOCK/SYNTHETIC PROFILES")
+    print("  • Clusters: 35 clusters (Vikhlinin+2006 + CLASH) — REAL DATA")
     print("  • Quality cuts: Lelli & McGaugh (2016)")
     print("=" * 75)
     
@@ -1018,19 +1057,20 @@ def main():
     
     # Fit SPARC galaxies
     print("\n" + "=" * 75)
-    print("FITTING SPARC GALAXIES (176 galaxies)")
+    print("FITTING SPARC GALAXIES (176 galaxies) — REAL DATA")
     print("=" * 75)
     
     sparc_results = fit_all_sparc(sparc_galaxies, verbose=True)
     
-    # Fit JWST galaxies
+    # Fit JWST mock galaxies
     print("\n" + "=" * 75)
-    print("FITTING REAL JWST HIGH-Z GALAXIES (6 galaxies)")
+    print("FITTING MOCK JWST HIGH-Z PROFILES (6 galaxies)")
+    print("WARNING: These are SYNTHETIC profiles, NOT real data")
     print("=" * 75)
     
     jwst_results = {}
     for name, data in jwst_galaxies.items():
-        print(f"  Fitting {name} (z={data['z']:.2f})...")
+        print(f"  Fitting {name} (z={data['z']:.2f}) [MOCK PROFILE]...")
         result = fit_galaxy(
             data['R_kpc'], data['V_obs'], data['V_err'],
             data['V_disk'], data['V_bul'], data['V_gas_raw'],
@@ -1050,7 +1090,7 @@ def main():
     # ============================================================
     
     print("\n" + "=" * 75)
-    print("SPARC RESULTS")
+    print("SPARC RESULTS (REAL DATA)")
     print("=" * 75)
     
     sparc_all_res = [r['mean_abs_pct'] for r in sparc_results.values()]
@@ -1075,7 +1115,8 @@ def main():
     print(f"  Std residual:   {np.std(sparc_std_res):.2f}%")
     
     print("\n" + "=" * 75)
-    print("JWST HIGH-Z RESULTS (REAL DATA)")
+    print("MOCK JWST HIGH-Z RESULTS (SYNTHETIC PROFILES)")
+    print("WARNING: These results are from MOCK data, not real observations")
     print("=" * 75)
     print(f"\n{'Galaxy':<20} {'z':<8} {'Res%':<10} {'V_flat':<8} {'ϒ_disk':<8} {'ϒ_bulge':<8} {'a0/a0(0)':<10}")
     print("-" * 85)
@@ -1084,11 +1125,11 @@ def main():
     for name, r in jwst_results.items():
         print(f"{name:<20} {r['gal']['z']:<8.2f} {r['mean_abs_pct']:<9.1f}% "
               f"{r['ps']['V_flat']:<8.0f} {r['ups_disk']:<8.2f} {r['ups_bul']:<8.2f} "
-              f"{r['ps']['Hz_H0']:<10.2f}")
+              f"{r['ps']['Hz_H0']:<10.2f}  [MOCK]")
         jwst_residuals.append(r['mean_abs_pct'])
     
-    print(f"\nJWST Summary:")
-    print(f"  Total: {len(jwst_results)}")
+    print(f"\nMOCK JWST Summary:")
+    print(f"  Total: {len(jwst_results)} (SYNTHETIC PROFILES)")
     print(f"  Mean residual:  {np.mean(jwst_residuals):.1f}%")
     print(f"  Median residual: {np.median(jwst_residuals):.1f}%")
     print(f"  Redshift range: {min([r['gal']['z'] for r in jwst_results.values()]):.2f} - "
@@ -1097,7 +1138,7 @@ def main():
           f"{max([r['ps']['Hz_H0'] for r in jwst_results.values()]):.2f}x")
     
     print("\n" + "=" * 75)
-    print("CLUSTER RESULTS")
+    print("CLUSTER RESULTS (REAL DATA)")
     print("=" * 75)
     
     cluster_res = [c['resid_pct'] for c in clusters]
@@ -1133,7 +1174,7 @@ def main():
     # SPARC residual distribution
     plot_sparc_residual_distribution(sparc_results, save=True)
     
-    # JWST plots
+    # JWST plots (MOCK data)
     if jwst_results:
         for name, r in jwst_results.items():
             plot_jwst_overlay(r['result'], r['gal'], save=True)
@@ -1154,17 +1195,17 @@ def main():
     print("\n" + "=" * 50)
     print("DATA SUMMARY:")
     print("=" * 50)
-    print(f"  SPARC galaxies:     {len(sparc_results)}")
-    print(f"  JWST high-z:        {len(jwst_results)} (REAL DATA)")
-    print(f"  Clusters:           {len(clusters)}")
+    print(f"  SPARC galaxies:     {len(sparc_results)} (REAL DATA)")
+    print(f"  JWST high-z:        {len(jwst_results)} (MOCK/SYNTHETIC PROFILES)")
+    print(f"  Clusters:           {len(clusters)} (REAL DATA)")
     
     print("\n" + "=" * 50)
     print("PERFORMANCE SUMMARY:")
     print("=" * 50)
-    print(f"  SPARC (all):        {np.mean(sparc_all_res):.2f}% residual")
-    print(f"  SPARC (high-quality): {np.mean(sparc_high_res):.2f}% residual")
-    print(f"  JWST high-z:        {np.mean(jwst_residuals):.1f}% residual")
-    print(f"  Clusters:           {np.mean(cluster_res):.1f}% residual")
+    print(f"  SPARC (all):        {np.mean(sparc_all_res):.2f}% residual (REAL DATA)")
+    print(f"  SPARC (high-quality): {np.mean(sparc_high_res):.2f}% residual (REAL DATA)")
+    print(f"  JWST high-z:        {np.mean(jwst_residuals):.1f}% residual (MOCK DATA)")
+    print(f"  Clusters:           {np.mean(cluster_res):.1f}% residual (REAL DATA)")
     print(f"  BTFR slope:         {slope_c:.4f} ± {std_err_c:.4f} (pred 0.250)")
     
     print("\n" + "=" * 50)
@@ -1181,6 +1222,8 @@ def main():
     print("  The UCBF V13 model successfully predicts galactic rotation")
     print("  curves from z=0 to z=14.3 with zero dark matter, using")
     print("  constants motivated by FCC lattice geometry.")
+    print("\n  NOTE: High-z results are from MOCK/SYNTHETIC profiles")
+    print("  designed to match literature constraints, NOT real data.")
     print("=" * 75)
 
 if __name__ == "__main__":
