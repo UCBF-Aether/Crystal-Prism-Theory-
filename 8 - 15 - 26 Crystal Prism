@@ -266,15 +266,15 @@ print("\n" + "="*75)
 print("STEP 7: β FROM 2D VARIATIONAL PRINCIPLE")
 print("="*75)
 
-def density_profile(r, beta, xi=1.0):
-    return 1.0 - np.exp(-(r/xi)**beta)
+def density_profile(r, beta_val, xi=1.0):
+    return 1.0 - np.exp(-(r/xi)**beta_val)
 
-def energy_2D(beta, V0, xi=1.0, r_max=30.0):
+def energy_2D(beta_val, V0, xi=1.0, r_max=30.0):
     def f_int(r):
-        n = density_profile(r, beta, xi)
+        n = density_profile(r, beta_val, xi)
         return (1-n)**2 * r
     def g_int(r):
-        dn = (beta/xi) * (r/xi)**(beta-1) * np.exp(-(r/xi)**beta)
+        dn = (beta_val/xi) * (r/xi)**(beta_val-1) * np.exp(-(r/xi)**beta_val)
         return dn**2 * r
     Ef = quad(f_int, 0, r_max, epsabs=1e-14, epsrel=1e-14)[0]
     El = quad(g_int, 0, r_max, epsabs=1e-14, epsrel=1e-14)[0]
@@ -297,6 +297,7 @@ for i in range(len(V0s)-1):
         break
 
 beta_derived = 0.5
+V0_beta = 18.769
 
 if bracket:
     V0_beta = brentq(beta_minus_half, bracket[0], bracket[1], xtol=1e-14)
@@ -316,7 +317,7 @@ if bracket:
 """)
 
 # ============================================================================
-# STEP 8: REAL DATA FITTING
+# STEP 8: REAL DATA FITTING — FIXED TABLE ACCESS
 # ============================================================================
 
 print("\n" + "="*75)
@@ -345,7 +346,21 @@ def fetch_and_fit_sparc():
     print("\n  Fetching SPARC...")
     Vizier.ROW_LIMIT = -1
     cats = Vizier.get_catalogs('J/AJ/152/157')
-    rc = cats[1].to_pandas()
+    tables = list(cats)
+    
+    # Find rotation curve table by content
+    rc = None
+    for table in tables:
+        df = table.to_pandas()
+        cols = [str(c).lower() for c in df.columns]
+        if any('rad' in c for c in cols) and any('vobs' in c for c in cols):
+            rc = df
+            break
+    
+    if rc is None:
+        print("  ❌ Rotation curve table not found")
+        return 0, 0
+    
     results = []
     for name in rc['Name'].unique():
         g = rc[rc['Name'] == name]
@@ -371,7 +386,20 @@ def fetch_and_fit_little_things():
     print("  Fetching LITTLE THINGS...")
     Vizier.ROW_LIMIT = -1
     cats = Vizier.get_catalogs('J/AJ/149/180')
-    rc = cats[1].to_pandas()
+    tables = list(cats)
+    
+    rc = None
+    for table in tables:
+        df = table.to_pandas()
+        cols = [str(c).lower() for c in df.columns]
+        if 'r0.3' in cols and 'v0.3' in cols and 'type' in cols:
+            rc = df
+            break
+    
+    if rc is None:
+        print("  ❌ LITTLE THINGS table not found")
+        return 0, 0
+    
     rc = rc[rc['Type'] == 'Data']
     results = []
     for name in rc['Name'].unique():
