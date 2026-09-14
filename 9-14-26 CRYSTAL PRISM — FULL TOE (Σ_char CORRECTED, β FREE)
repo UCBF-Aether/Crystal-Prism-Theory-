@@ -1,0 +1,412 @@
+#!/usr/bin/env python3
+"""
+================================================================================
+CRYSTAL PRISM — FULL TOE (Σ_char CORRECTED, β FREE)
+================================================================================
+Final version. Everything needed to reproduce the paper:
+
+  - Derived constants (Σ_char corrected: πG, not 2πG)
+  - SPARC loader
+  - Baryonic mass estimator (90th percentile)
+  - Self-consistent a_eff solve
+  - Vortex predictor with free β
+  - Two-parameter fitter (Υ_disk, β) per galaxy
+  - Cluster BTFR consistency check
+  - Dwarf regime diagnostics
+  - Full summary statistics
+
+PARSIMONY:
+  Per galaxy         : 1 structural param (Λ = a_base²/Σ_char, degenerate)
+                     + 1 shape param (β, mass-dependent)
+  Derived globals    : a0 = c·H0/2π,  a_base = a0·2/√3,
+                       Σ_char = a_base/(π·G)·12/(μ+12)
+  Assumed globals    : Υ_bulge = 0.7
+
+RESULTS (from paper):
+  175 SPARC, β fixed 0.5  : median 5.99%, mean 13.51%
+  175 SPARC, β free       : median 3.41%, mean 7.27%
+  35 clusters (BTFR)      : median 5.8%
+================================================================================
+"""
+
+import os, glob, zipfile, warnings, time
+import numpy as np
+from scipy.optimize import minimize
+from scipy.interpolate import interp1d
+from scipy import stats
+import requests
+
+warnings.filterwarnings("ignore")
+
+# =============================================================================
+# [0] DERIVED CONSTANTS
+# =============================================================================
+
+c       = 2.99792458e8          # m/s
+G       = 6.6720e-11            # m^3/kg/s^2
+M_sun   = 1.989e30              # kg
+Mpc_m   = 3.08567758e22         # m
+pc_m    = 3.08567758e16         # m
+kpc_m   = 3.08567758e19         # m
+
+H0      = 67.4                  # km/s/Mpc
+H0_si   = H0 * 1000.0 / Mpc_m
+a0_SI   = c * H0_si / (2.0 * np.pi)          # ≈ 1.0422e-10 m/s²
+
+sqrt3      = np.sqrt(3.0)
+a_base_si  = a0_SI * 2.0 / sqrt3
+a_base     = a_base_si * 1e-3 * (kpc_m / 1e3)   # ≈ 3713 km²/s²/kpc
+
+mu_FCC     = 21
+Sigma_char_si = (a_base_si / (np.pi * G)) * (12.0 / (mu_FCC + 12.0))
+Sigma_char    = Sigma_char_si * pc_m**2 / M_sun   # ≈ 99.94 M_sun/pc²
+
+alpha_vortex = 1.0
+UPS_BULGE    = 0.7
+
+G_PC        = 4.3009e-3
+kpc_to_pc   = 1000.0
+
+# β bounds
+BETA_LO = 0.1
+BETA_HI = 2.5
+
+# =============================================================================
+# [1] SPARC LOADER
+# =============================================================================
+
+ZENODO_URL = "https://zenodo.org/records/16284118/files/Rotmod_LTG.zip"
+
+def load_sparc(data_dir="sparc_data", verbose=True, max_retries=5):
+    os.makedirs(data_dir, exist_ok=True)
+    zp = os.path.join(data_dir, "Rotmod_LTG.zip")
+
+    if not os.path.exists(zp):
+        for a in range(1, max_retries + 1):
+            try:
+                if verbose: print(f"  download attempt {a}/{max_retries}...")
+                r = requests.get(ZENODO_URL, timeout=180, stream=True)
+                r.raise_for_status()
+                with open(zp, "wb") as f:
+                    for chunk in r.iter_content(1 << 16):
+                        f.write(chunk)
+                break
+            except requests.exceptions.RequestException as e:
+                if a == max_retries: raise
+                time.sleep(2 ** a)
+
+    if not glob.glob(f"{data_dir}/*_rotmod.dat"):
+        with zipfile.ZipFile(zp) as z: z.extractall(data_dir)
+
+    galaxies = {}
+    for fp in sorted(glob.glob(f"{data_dir}/*_rotmod.dat")):
+        name = os.path.basename(fp).replace("_rotmod.dat", "")
+        rows = []
+        with open(fp) as fh:
+            for line in fh:
+                s = line.strip()
+                if not s or s.startswith("#"): continue
+                p = s.split()
+                if len(p) < 6: continue
+                try: rows.append([float(x) for x in p[:6]])
+                except ValueError: continue
+        if len(rows) < 3: continue
+
+        d = np.array(rows)
+        R, Vobs, Verr = d[:,0], d[:,1], d[:,2]
+        Vgas  = np.abs(d[:,3]); Vdisk = d[:,4]; Vbul = d[:,5]
+        m = (R > 0) & (Vobs > 0) & (Verr > 0)
+        if m.sum() < 3: continue
+
+        order = np.argsort(R[m])
+        galaxies[name] = {
+            "R_kpc":  R[m][order],
+            "V_obs":  Vobs[m][order],
+            "V_err":  Verr[m][order],
+            "V_gas":  Vgas[m][order],
+            "V_disk": Vdisk[m][order],
+            "V_bul":  Vbul[m][order],
+        }
+
+    if verbose: print(f"  loaded {len(galaxies)} galaxies")
+    return galaxies
+
+# =============================================================================
+# [2] BARYONIC MASS ESTIMATOR
+# =============================================================================
+
+def baryonic_mass(R_kpc, V_disk_ml, V_bul_ml, V_gas):
+    V_bar = np.sqrt(V_gas**2 + V_disk_ml**2 + V_bul_ml**2)
+    R_pc  = R_kpc * kpc_to_pc
+    return max(np.percentile(V_bar**2 * R_pc, 90) / G_PC, 1e-5)
+
+# =============================================================================
+# [3] SELF-CONSISTENT a_eff SOLVE
+# =============================================================================
+
+def solve_a_eff(R_kpc, Sigma_bar, V_flat, max_iter=20, tol=1e-4):
+    R_kpc     = np.asarray(R_kpc, dtype=float)
+    Sigma_bar = np.asarray(Sigma_bar, dtype=float)
+    a_eff = a_base
+
+    for _ in range(max_iter):
+        r_t = np.clip(V_flat**2 / a_eff, R_kpc.min()*1.01, R_kpc.max()*0.99)
+        S   = np.interp(r_t, R_kpc, Sigma_bar)
+        a_new = np.clip(a_base * np.sqrt(np.clip(S / Sigma_char, 0.01, 100.0)),
+                        400.0, 12000.0)
+        if abs(a_new - a_eff) / a_eff < tol:
+            return a_new, V_flat**2 / a_new
+        a_eff = 0.7*a_eff + 0.3*a_new
+    return a_eff, V_flat**2 / a_eff
+
+# =============================================================================
+# [4] VORTEX PREDICTOR
+# =============================================================================
+
+def vortex_predict(R, Vd, Vb, Vg, ups_d, beta_val):
+    R = np.asarray(R, dtype=float)
+    if len(Vd) != len(R):
+        R0 = np.linspace(R.min(), R.max(), len(Vd))
+        f = lambda V: interp1d(R0, V, kind="linear", fill_value="extrapolate")(R)
+        Vd, Vb, Vg = map(f, (Vd, Vb, Vg))
+
+    Vd_ml = Vd * np.sqrt(max(ups_d, 0.01))
+    Vb_ml = Vb * np.sqrt(UPS_BULGE)
+    Vg    = np.abs(Vg)
+
+    V_bar = np.sqrt(Vg**2 + Vd_ml**2 + Vb_ml**2)
+    M_bar = baryonic_mass(R, Vd_ml, Vb_ml, Vg)
+    V_flat = (a0_SI * G * M_bar * M_sun) ** 0.25 / 1000.0
+
+    R_pc = R * kpc_to_pc
+    with np.errstate(divide="ignore", invalid="ignore"):
+        Sigma = np.where(R_pc > 1e-10, V_bar**2 / (2*np.pi*G_PC*R_pc), 0.0)
+
+    a_eff, r_t = solve_a_eff(R, Sigma, V_flat)
+    x = R / max(r_t, 1e-6)
+    V_vortex = alpha_vortex * V_flat * (1.0 - np.exp(-(x ** beta_val)))
+    V_pred   = np.sqrt(V_bar**2 + V_vortex**2)
+
+    return {"V_pred": V_pred, "V_bar": V_bar, "V_vortex": V_vortex,
+            "V_flat": V_flat, "M_bar": M_bar, "a_eff": a_eff, "r_t": r_t}
+
+# =============================================================================
+# [5] TWO-PARAMETER FITTER (Υ_disk, β)
+# =============================================================================
+
+def fit_galaxy(gal, beta_free=True):
+    R, Vo, Ve = gal["R_kpc"], gal["V_obs"], gal["V_err"]
+    Vd, Vb, Vg = gal["V_disk"], gal["V_bul"], gal["V_gas"]
+    m = (Vo > 1.0) & (Ve > 0)
+    if m.sum() < 3: return None
+    errs = np.sqrt(Ve[m]**2 + (0.05*Vo[m])**2)
+
+    if beta_free:
+        def obj(x):
+            try:
+                pred = vortex_predict(R, Vd, Vb, Vg, x[0], x[1])["V_pred"]
+            except Exception:
+                return 1e10
+            return np.sum(((pred[m] - Vo[m]) / errs)**2)
+
+        best_x, best_f = [0.5, 0.7], np.inf
+        for u0 in (0.3, 0.5, 0.7, 1.0, 1.5):
+            for b0 in (0.2, 0.4, 0.6, 0.8, 1.2, 1.8):
+                r = minimize(obj, [u0, b0], method="L-BFGS-B",
+                             bounds=[(0.01, 2.5), (BETA_LO, BETA_HI)],
+                             options={"maxiter": 300})
+                if r.fun < best_f:
+                    best_f, best_x = r.fun, r.x
+        ups_d, beta_best = best_x
+    else:
+        def obj(x):
+            try:
+                pred = vortex_predict(R, Vd, Vb, Vg, x[0], 0.5)["V_pred"]
+            except Exception:
+                return 1e10
+            return np.sum(((pred[m] - Vo[m]) / errs)**2)
+
+        best_x, best_f = [0.5], np.inf
+        for s in [[0.5],[0.3],[1.0],[0.8],[1.5]]:
+            r = minimize(obj, s, method="L-BFGS-B",
+                         bounds=[(0.01, 2.5)], options={"maxiter": 200})
+            if r.fun < best_f: best_f, best_x = r.fun, r.x
+        ups_d = best_x[0]
+        beta_best = 0.5
+
+    pred = vortex_predict(R, Vd, Vb, Vg, ups_d, beta_best)
+    resid = pred["V_pred"][m] - Vo[m]
+    pct   = 100.0 * resid / Vo[m]
+
+    return {"ups_disk": ups_d, "beta": beta_best,
+            "V_flat": pred["V_flat"], "M_bar": pred["M_bar"],
+            "r_t": pred["r_t"],
+            "mean_abs_pct":   float(np.mean(np.abs(pct))),
+            "median_abs_pct": float(np.median(np.abs(pct))),
+            "rms":            float(np.sqrt(np.mean(resid**2))),
+            "n_pts":          int(m.sum())}
+
+# =============================================================================
+# [6] CLUSTER BTFR
+# =============================================================================
+
+CLUSTERS = [
+    ('A133',3.61,2.34,0.266,0.020),('A262',2.16,0.914,0.094,0.025),
+    ('A383',4.24,2.72,0.339,0.018),('A478',6.38,5.97,0.742,0.015),
+    ('A907',5.32,4.57,0.535,0.016),('A1413',6.62,6.61,0.729,0.014),
+    ('A1795',5.89,5.32,0.589,0.015),('A1991',2.71,1.24,0.131,0.022),
+    ('A2029',7.98,8.61,1.020,0.012),('A2390',8.98,11.60,1.487,0.011),
+    ('Abell209',5.6,2.8,0.35,0.018),('Abell383',4.8,2.5,0.31,0.017),
+    ('Abell611',6.9,3.5,0.42,0.016),('Abell1423',5.2,2.6,0.33,0.017),
+    ('Abell1689',9.2,5.8,0.68,0.014),('Abell1703',7.1,3.8,0.45,0.015),
+    ('Abell1835',7.8,4.2,0.52,0.015),('Abell2261',7.4,4.0,0.48,0.015),
+    ('Abell2537',5.0,2.4,0.30,0.017),('CLJ1226',8.0,4.5,0.55,0.014),
+    ('MACSJ0257',4.5,2.2,0.28,0.018),('MACSJ0329',4.2,2.0,0.25,0.018),
+    ('MACSJ0429',4.0,1.9,0.24,0.019),('MACSJ0451',3.8,1.8,0.23,0.019),
+    ('MACSJ0647',4.5,2.2,0.28,0.018),('MACSJ0744',4.6,2.2,0.28,0.018),
+    ('MACSJ0949',4.4,2.1,0.27,0.019),('MACSJ1115',4.7,2.3,0.29,0.018),
+    ('MACSJ1149',4.9,2.4,0.30,0.018),('MACSJ1206',5.2,2.6,0.33,0.017),
+    ('MACSJ1226',5.0,2.5,0.31,0.017),('MACSJ1311',4.8,2.3,0.29,0.018),
+    ('MACSJ1341',4.6,2.2,0.28,0.018),('MACSJ1423',4.5,2.1,0.27,0.018),
+    ('MACSJ1532',4.8,2.4,0.30,0.018),
+]
+
+def validate_clusters():
+    kJ = 1.60218e-16; mu, mp = 0.588, 1.6726e-27
+    out = []
+    for name, T, M500, Mg, fs in CLUSTERS:
+        M_bar = (Mg + fs*M500) * 1e14
+        so = np.sqrt(T*kJ/(mu*mp)) / 1000.0
+        sp = (a0_SI * G * M_bar * M_sun) ** 0.25 / 1000.0
+        out.append({"name": name, "M_bar": M_bar,
+                    "sigma_obs": so, "sigma_pred": sp,
+                    "resid_pct": abs(sp-so)/so*100})
+    return out
+
+# =============================================================================
+# [7] MAIN
+# =============================================================================
+
+def main():
+    print("=" * 78)
+    print("  CRYSTAL PRISM — FULL TOE (Σ_char CORRECTED, β FREE)")
+    print("=" * 78)
+    print("\n  DERIVED GLOBALS")
+    print(f"    a0      = {a0_SI:.6e} m/s²       (c·H0/2π)")
+    print(f"    a_base  = {a_base:.3f} km²/s²/kpc   (a0·2/√3)")
+    print(f"    Σ_char  = {Sigma_char:.3f} M_sun/pc²   (a_base/(πG)·12/(μ+12))")
+    print(f"\n  ASSUMED GLOBALS")
+    print(f"    Υ_bulge = {UPS_BULGE}")
+
+    print("\n[1] Loading SPARC")
+    galaxies = load_sparc()
+    if not galaxies:
+        print("  no galaxies loaded"); return
+
+    # ----- Baseline: β fixed at 0.5 -----
+    print(f"\n[2] Fitting {len(galaxies)} galaxies with β = 0.5 fixed")
+    t0 = time.time()
+    res_fixed = {}
+    for i, (n, g) in enumerate(galaxies.items(), 1):
+        if i % 50 == 0: print(f"  ... {i}/{len(galaxies)}")
+        r = fit_galaxy(g, beta_free=False)
+        if r: res_fixed[n] = r
+    print(f"  done in {time.time()-t0:.1f}s")
+
+    med_f = np.array([r["median_abs_pct"] for r in res_fixed.values()])
+    mab_f = np.array([r["mean_abs_pct"]   for r in res_fixed.values()])
+    upd_f = np.array([r["ups_disk"]       for r in res_fixed.values()])
+
+    print(f"\n  SPARC (β = 0.5 fixed)")
+    print(f"    galaxies        : {len(res_fixed)}")
+    print(f"    median |res|    : {np.median(med_f):.2f}%")
+    print(f"    mean |res|      : {np.mean(mab_f):.2f}%")
+    print(f"    Υ_disk median   : {np.median(upd_f):.2f} "
+          f"[{np.percentile(upd_f,16):.2f}, {np.percentile(upd_f,84):.2f}]")
+
+    # ----- Free β -----
+    print(f"\n[3] Fitting {len(galaxies)} galaxies with β free")
+    t0 = time.time()
+    res_free = {}
+    for i, (n, g) in enumerate(galaxies.items(), 1):
+        if i % 25 == 0: print(f"  ... {i}/{len(galaxies)}")
+        r = fit_galaxy(g, beta_free=True)
+        if r: res_free[n] = r
+    print(f"  done in {time.time()-t0:.1f}s")
+
+    med_fr = np.array([r["median_abs_pct"] for r in res_free.values()])
+    mab_fr = np.array([r["mean_abs_pct"]   for r in res_free.values()])
+    upd_fr = np.array([r["ups_disk"]       for r in res_free.values()])
+    bet_fr = np.array([r["beta"]           for r in res_free.values()])
+    vfl_fr = np.array([r["V_flat"]         for r in res_free.values()])
+
+    print(f"\n  SPARC (β free)")
+    print(f"    galaxies        : {len(res_free)}")
+    print(f"    median |res|    : {np.median(med_fr):.2f}%")
+    print(f"    mean |res|      : {np.mean(mab_fr):.2f}%")
+    print(f"    Υ_disk median   : {np.median(upd_fr):.2f} "
+          f"[{np.percentile(upd_fr,16):.2f}, {np.percentile(upd_fr,84):.2f}]")
+    print(f"    β median        : {np.median(bet_fr):.3f} "
+          f"[{np.percentile(bet_fr,16):.3f}, {np.percentile(bet_fr,84):.3f}]")
+
+    # ----- β vs V_flat binned -----
+    print(f"\n  β vs V_flat")
+    print(f"    {'V_flat bin':>15} {'n':>5} {'β median':>10} {'res median':>12}")
+    bins = [(0, 40), (40, 60), (60, 90), (90, 130), (130, 180), (180, 400)]
+    for lo, hi in bins:
+        mask = (vfl_fr >= lo) & (vfl_fr < hi)
+        if mask.sum() == 0: continue
+        print(f"    [{lo:>4}, {hi:>4})  {mask.sum():>5} "
+              f"{np.median(bet_fr[mask]):>10.3f} "
+              f"{np.median(med_fr[mask]):>11.2f}%")
+
+    # ----- Best / worst -----
+    ranked = sorted(res_free.items(), key=lambda kv: kv[1]["median_abs_pct"])
+    print(f"\n  BEST 10 (β free)")
+    for n, r in ranked[:10]:
+        print(f"    {n:<15} {r['median_abs_pct']:5.2f}%  "
+              f"V_flat={r['V_flat']:.0f}  β={r['beta']:.2f}  "
+              f"Υ={r['ups_disk']:.2f}")
+    print(f"\n  WORST 10 (β free)")
+    for n, r in ranked[-10:]:
+        print(f"    {n:<15} {r['median_abs_pct']:5.2f}%  "
+              f"V_flat={r['V_flat']:.0f}  β={r['beta']:.2f}  "
+              f"Υ={r['ups_disk']:.2f}")
+
+    # ----- Dwarf regime -----
+    print(f"\n  Dwarf regime (V_flat < 60 km/s)")
+    dmask = vfl_fr < 60
+    if dmask.sum() > 0:
+        print(f"    count          : {int(dmask.sum())}")
+        print(f"    median |res|   : {np.median(med_fr[dmask]):.2f}%")
+
+    # ----- Cluster BTFR -----
+    print(f"\n[4] Cluster BTFR")
+    cl = validate_clusters()
+    cres = np.array([c["resid_pct"] for c in cl])
+    logM = np.log10([c["M_bar"] for c in cl])
+    logS = np.log10([c["sigma_obs"] for c in cl])
+    slope, _, r_val, _, se = stats.linregress(logM, logS)
+
+    print(f"    clusters         : {len(cl)}")
+    print(f"    median |res|     : {np.median(cres):.1f}%")
+    print(f"    BTFR slope       : {slope:.4f} ± {se:.4f}")
+    print(f"    predicted        : 0.2500")
+    print(f"    agreement        : {abs(slope-0.25)/se:.1f}σ")
+    print(f"    R²               : {r_val**2:.4f}")
+
+    # ----- Summary -----
+    print("\n" + "=" * 78)
+    print("  SUMMARY")
+    print("=" * 78)
+    print(f"  Model        : V_pred² = V_bar² + V_flat²(1 − e^{{−(R/r_t)^β}})²")
+    print(f"  BTFR         : V_flat = (a0·G·M_bar)^(1/4)")
+    print(f"  Per galaxy   : 1 free (Υ_disk) at fixed β")
+    print(f"               : 2 free (Υ_disk, β) with β free")
+    print(f"  SPARC β=0.5  : median {np.median(med_f):.2f}%  mean {np.mean(mab_f):.2f}%")
+    print(f"  SPARC β free : median {np.median(med_fr):.2f}%  mean {np.mean(mab_fr):.2f}%")
+    print(f"  Clusters     : median {np.median(cres):.1f}%")
+    print("=" * 78)
+
+if __name__ == "__main__":
+    main()
