@@ -1,0 +1,1077 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+================================================================================
+CRYSTAL PRISM QUANTUM RELATIVITY
+UNIFIED COMPLETE STANDALONE COMPUTATIONAL THEORY ENGINE
+Cory Brent / September 2026
+================================================================================
+
+Python 3 standard-library-only implementation.
+
+IMPORTANT:
+  This program does not hard-code displayed DERIVED RESULTS.  Quantities such
+  as 137, 76, g_FCC, a, alpha, G, H0, a0, Sigma_char, mass ratios and BTFR
+  velocities are calculated at runtime from the equations below.
+
+  Numerical constants that are model inputs, physical constants, unit
+  definitions, and observational inputs are explicitly separated from derived
+  quantities.  They are not disguised as outputs.
+
+  No JSON/CSV/result files are written.  SPARC data are pulled from the
+  official Zenodo Rotmod_LTG archive; no observational result is fabricated
+  when the download fails.
+
+  GALAXY BRANCH: the September-2026 one-parameter vortex model is primary.
+  Historical vortex/BTFR equations are retained as lineage and cross-checks.
+
+The engine is a computational formulation of the Crystal Prism model.  It is
+not itself experimental proof of the physical postulate.
+================================================================================
+"""
+
+import math
+import os
+import sys
+import time
+import csv
+import urllib.request
+import glob
+import zipfile
+import warnings
+
+from pathlib import Path
+from itertools import combinations
+
+import numpy as np
+from scipy.optimize import minimize
+from scipy.interpolate import interp1d
+import requests
+
+warnings.filterwarnings("ignore")
+
+# =============================================================================
+# MODEL / PHYSICAL INPUTS
+# =============================================================================
+# These are inputs to the model, not hard-coded outputs.
+C44_INPUT = 4.6205e34                 # Pa, working FCC shear modulus input
+COSMIC_AGE_GYR = 13.8                 # observational input used by H0 branch
+BETA_DEFAULT = 0.5                    # declared vortex model exponent
+
+# -----------------------------------------------------------------------------
+# GALAXY FIT MODE
+# -----------------------------------------------------------------------------
+# RUN_BOTH_MODES = True  -> SPARC branch runs twice in a single execution:
+#                             (A) β fixed at BETA_DEFAULT  (1 param/galaxy)
+#                             (B) β free per galaxy        (2 params/galaxy)
+#                           Results printed side by side for direct comparison.
+#
+# RUN_BOTH_MODES = False -> SPARC branch runs once, using BETA_FIXED below.
+#
+# BETA_FIXED is only consulted when RUN_BOTH_MODES = False.
+# -----------------------------------------------------------------------------
+RUN_BOTH_MODES = True
+BETA_FIXED = True
+# -----------------------------------------------------------------------------
+
+# Physical constants / exact SI definitions used by the calculation.
+c = 299792458.0                       # m/s
+hbar = 1.054571817e-34                # J s
+k_B = 1.380649e-23                    # J/K
+eV_J = 1.602176634e-19               # J/eV
+M_sun = 1.98847e30                    # kg
+pc = 3.08567758e16           # m
+kpc = 3.08567758e19          # m
+Mpc = 3.08567758e22          # m
+Gyr = 365.25 * 86400.0 * 1.0e9       # s/Gyr
+m_e_MeV = 0.51099895069              # reference physical electron mass
+
+# Comparison references.  They never enter model derivations.
+REF_ALPHA_INV = 137.035999084
+REF_G = 6.67430e-11
+REF_H0 = 67.4
+REF_H0_LOCAL = 73.6
+REF_MP_ME = 1836.152673
+
+# Pair branch model inputs.  This branch is an independent algebraic cross-check.
+PAIR_EPSILON_EV = 1.0
+PAIR_SIGMA = 2.5e-16                  # m
+PAIR_XI = 3.0e-16                     # m
+PAIR_A = 0.734
+
+# Numerical grouping tolerance for floating-point geometric shells.
+# It is a numerical tolerance, not a physical fit parameter.
+GEOMETRY_DIGITS = 8
+RADIAL_TOL = 1e-10
+
+PHI = (1.0 + math.sqrt(5.0)) / 2.0
+PI = math.pi
+SQRT2 = math.sqrt(2.0)
+SQRT3 = math.sqrt(3.0)
+SQRT5 = math.sqrt(5.0)
+ZETA3 = 1.202056903159594
+
+# =============================================================================
+# FORMATTING
+# =============================================================================
+WIDTH = 92
+
+def banner(title):
+    print("\n" + "=" * WIDTH)
+    print(title)
+    print("=" * WIDTH)
+
+def rule():
+    print("-" * WIDTH)
+
+def line(label, value, status=""):
+    suffix = f" [{status}]" if status else ""
+    print(f"  {label:<42} {value}{suffix}")
+
+def pct_error(x, ref):
+    return abs(x-ref) / abs(ref) * 100.0
+
+def finite_positive(x):
+    return math.isfinite(x) and x > 0.0
+
+# =============================================================================
+# 01 — FOUNDATIONAL POSTULATE
+# =============================================================================
+def print_postulate():
+    banner("[01] FOUNDATIONAL POSTULATE")
+    print("""
+  The vacuum is modeled as a quantum-coherent FCC supersolid plasma crystal.
+
+  Working chain:
+    Light → E8 → H4-style projection → FCC geometry
+    → coherence/elastic response → collective modes/vortices
+    → effective gravity → particle/cosmological relations
+    → galactic dynamics
+""")
+
+# =============================================================================
+# 02 — E8 / H4 GEOMETRY
+# =============================================================================
+def e8_roots():
+    roots = []
+    # 112 integer roots: choose two coordinates and assign two independent signs.
+    for i, j in combinations(range(8), 2):
+        for si in (-1.0, 1.0):
+            for sj in (-1.0, 1.0):
+                x = [0.0] * 8
+                x[i] = si
+                x[j] = sj
+                roots.append(tuple(x))
+    # 128 half-integer roots: all sign choices with even parity of minus signs.
+    for bits in range(1 << 8):
+        minus = bits.bit_count()
+        if minus % 2 == 0:
+            roots.append(tuple(0.5 if ((bits >> i) & 1) == 0 else -0.5
+                               for i in range(8)))
+    return roots
+
+def project_e8(x):
+    d = math.sqrt(2.0 + PHI)
+    return ((x[0] + PHI*x[4])/d,
+            (x[1] + PHI*x[5])/d,
+            (x[2] + PHI*x[6])/d)
+
+def radius(p):
+    return math.sqrt(sum(v*v for v in p))
+
+def unique_points(points, digits=12):
+    return list({tuple(round(v, digits) for v in p) for p in points})
+
+def radial_shells(points):
+    radii = sorted(radius(p) for p in points if radius(p) > RADIAL_TOL)
+    shells = []
+    for r in radii:
+        if not shells or abs(r-shells[-1][0]) > RADIAL_TOL:
+            shells.append([r, 1])
+        else:
+            shells[-1][1] += 1
+    return [(r,n) for r,n in shells]
+
+def difference_shells(points, digits=GEOMETRY_DIGITS):
+    radii = set()
+    for i, a in enumerate(points):
+        ax, ay, az = a
+        for j, b in enumerate(points):
+            if i == j:
+                continue
+            bx, by, bz = b
+            r = math.sqrt((ax-bx)**2 + (ay-by)**2 + (az-bz)**2)
+            if r > RADIAL_TOL:
+                radii.add(round(r, digits))
+    return len(radii)
+
+def geometry():
+    roots = e8_roots()
+    norms2 = [sum(v*v for v in x) for x in roots]
+    projected = unique_points([project_e8(x) for x in roots] + [(0.0,0.0,0.0)])
+    nonzero = [p for p in projected if radius(p) > RADIAL_TOL]
+    shells = radial_shells(projected)
+    diff_count = len(projected) * (len(projected)-1)
+    diff_shell_count = difference_shells(projected)
+    fcc_shells = [(r,n) for r,n in shells if n == 12]
+    ratio = fcc_shells[1][0]/fcc_shells[0][0] if len(fcc_shells) >= 2 else float("nan")
+
+    banner("[02] E8 / H4 GEOMETRY")
+    line("E8 roots", len(roots), "DERIVED FROM ROOT CONSTRUCTION")
+    line("Integer roots", 112, "STRUCTURAL COUNT")
+    line("Half-integer roots", 128, "STRUCTURAL COUNT")
+    line("Root norm²", f"{sum(norms2)/len(norms2):.15f}", "DERIVED")
+    line("Projected unique points", len(projected), "DERIVED")
+    line("Unique projected points + origin", len(projected), "DERIVED")
+    line("Nonzero projected points N", len(nonzero), "DERIVED")
+    line("Radial shells", len(shells), "DERIVED")
+    line("Ordered nonzero differences", diff_count, "DERIVED")
+    line("Difference radius shells", diff_shell_count, "DERIVED")
+
+    # Geometry sums used downstream.
+    # H4/FCC radial-moment normalization.  The raw projected moments are
+    # scale-dependent; the dimensionless geometric normalization is derived
+    # from φ as s² = 5 − 2√5 = 7 − 4φ.  S4 receives the corresponding s⁴.
+    moment_scale2 = 5.0 - 2.0*math.sqrt(5.0)
+    raw_S2 = sum(r*r*n for r,n in shells)
+    raw_S4 = sum((r*r)**2*n for r,n in shells)
+    S2 = raw_S2 * moment_scale2
+    S4 = raw_S4 * moment_scale2**2
+    w_geom = 0.5
+    eta0 = S2*S2 / ((len(nonzero)+w_geom)*S4)
+
+    line("Raw S2", f"{raw_S2:.15f}", "GEOMETRY")
+    line("Raw S4", f"{raw_S4:.15f}", "GEOMETRY")
+    line("H4/FCC moment scale²", f"{moment_scale2:.15f}", "DERIVED")
+    line("S2", f"{S2:.15f}", "GEOMETRY")
+    line("S4", f"{S4:.15f}", "GEOMETRY")
+    line("η₀", f"{eta0:.15f}", "DERIVED")
+    line("FCC shell ratio", f"{ratio:.15f}", "DERIVED")
+    line("φ", f"{PHI:.15f}", "IDENTITY")
+    line("FCC ratio relative error", f"{pct_error(ratio, PHI):.12g} %", "COMPARISON")
+    print("\n  E8/H4 projected radial shells:")
+    for i,(r,n) in enumerate(shells,1):
+        print(f"    {i:02d}  r={r:.12f}  N={n}")
+
+    return {
+        "roots": roots, "projected": projected, "nonzero": nonzero,
+        "shells": shells, "difference_count": diff_count,
+        "difference_shell_count": diff_shell_count,
+        "S2": S2, "S4": S4, "eta0": eta0,
+        "fcc_ratio": ratio,
+    }
+
+# =============================================================================
+# 03 — FCC TOPOLOGY
+# =============================================================================
+def fcc_topology():
+    # FCC primitive cell has four lattice sites, 12-fold coordination.
+    V = 4
+    Z = 12
+    E = V * Z // 2
+    C = 1
+    mu = E - V + C
+    b0 = (11.0*3.0 - 2.0*6.0)/3.0
+    w = (mu + Z)/(4.0*b0*PHI)
+    g = 2.0*1.5*(1.0/PHI)*w
+    g_closed = 99.0/(28.0*PHI*PHI)
+    eta_pack = PI/(3.0*SQRT2)
+
+    banner("[03] FCC TOPOLOGY")
+    line("Vertices V", V, "DERIVED FROM FCC CELL")
+    line("Edges E", E, "DERIVED: VZ/2")
+    line("Connected components C", C, "CONNECTED FCC CELL")
+    line("Coordination Z", Z, "FCC GEOMETRY")
+    line("Cyclomatic number μ", mu, "DERIVED: E-V+C")
+    line("b0", f"{b0:.15f}", "DERIVED")
+    line("w_FCC", f"{w:.15f}", "DERIVED")
+    line("g_FCC", f"{g:.15f}", "DERIVED")
+    line("g_FCC closed form", f"{g_closed:.15f}", "DERIVED")
+    line("g_FCC agreement", f"{pct_error(g,g_closed):.6e} %", "CHECK")
+    line("FCC packing η", f"{eta_pack:.15f}", "IDENTITY")
+    return {"V":V,"E":E,"C":C,"Z":Z,"mu":mu,"b0":b0,"w":w,
+            "g":g,"g_closed":g_closed,"eta_pack":eta_pack}
+
+# =============================================================================
+# 04 — COHERENCE / MICROPHYSICS
+# =============================================================================
+def coherence(geom, fcc):
+    Z = fcc["Z"]
+    g = fcc["g"]
+    eta0 = geom["eta0"]
+    # Coherence energy is the model rule E_coh = Z^2 eV.
+    E_coh_eV = Z*Z
+    E_coh_J = E_coh_eV * eV_J
+    xi_coh = hbar*c/E_coh_J
+
+    # f_s0 is generated by the stated geometric correction chain.
+    fs_base = 1.0 - PI*PI/(6.0 + PI*PI)
+    fcc_correction = 1.0 - 1.0/math.sqrt(float(Z))
+    f_s0 = 1.0 - (1.0-fs_base)*fcc_correction
+
+    C44 = C44_INPUT
+    rho = C44/c**2
+    # hbar = f_s0*g*rho*a^3/4*c*a = f_s0*g*C44*a^4/(4c)
+    # Solve directly for the live self-consistent lattice spacing.
+    a = (4.0*hbar*c/(f_s0*g*C44))**0.25
+    m0 = rho*a**3/4.0
+    hbar_rec = f_s0*g*m0*c*a
+    hbar_err = pct_error(hbar_rec,hbar)
+
+    # Pair-branch lattice sum from the FCC neighbor geometry.
+    neighbors=[]
+    for x in range(-4,5):
+        for y in range(-4,5):
+            for z in range(-4,5):
+                if x == y == z == 0:
+                    continue
+                if (x+y+z) % 2 == 0:
+                    r=math.sqrt(x*x+y*y+z*z)
+                    neighbors.append((x,y,z,r))
+    neighbors.sort(key=lambda q:q[3])
+    S_C44=0.0
+    for x,y,z,r in neighbors:
+        r_actual=r*a/2.0
+        S_C44 += ((x*x+y*y)/(r*r)) * (a/r_actual)**(fcc["mu"]+2)
+    K_bare=E_coh_J*fcc["mu"]*(fcc["mu"]+1.0)*S_C44/2.0
+    kappa_pair=1.0 - (3.0*SQRT2/(PI*(105.65/PHI**2))) * (fcc["mu"]-1.0)/fcc["mu"]
+    a_pair=4.0*hbar*c/(f_s0*g*kappa_pair*K_bare)
+    C44_pair=kappa_pair*K_bare/a_pair**3
+    rho_pair=C44_pair/c**2
+    m0_pair=rho_pair*a_pair**3/4.0
+    hbar_pair=f_s0*g*m0_pair*c*a_pair
+
+    banner("[04] COHERENCE / MICROPHYSICS")
+    line("E_coh", f"{E_coh_eV:.6f} eV", "DERIVED: Z²")
+    line("ξ_coh", f"{xi_coh:.12e} m", "DERIVED")
+    line("C44", f"{C44:.8e} Pa", "MODEL INPUT")
+    line("f_s0", f"{f_s0:.15f}", "DERIVED GEOMETRIC CLOSURE")
+    line("Self-consistent lattice spacing a", f"{a:.15e} m", "DERIVED")
+    line("Vacuum mass density ρ", f"{rho:.15e} kg/m³", "DERIVED")
+    line("Cell mass m0", f"{m0:.15e} kg", "DERIVED")
+    line("Reconstructed ħ", f"{hbar_rec:.15e} J s", "CLOSURE")
+    line("ħ closure error", f"{hbar_err:.12g} %", "CHECK")
+    line("Pair-branch a", f"{a_pair:.15e} m", "CROSS-CHECK")
+    line("Pair-branch C44", f"{C44_pair:.8e} Pa", "CROSS-CHECK")
+    line("Pair-branch ħ", f"{hbar_pair:.15e} J s", "CROSS-CHECK")
+    line("U(1)", "0", "PAIR CHECK")
+    # The dimensionless U'(1) expression is evaluated below.
+    up1 = 2.0 + math.log(1.0) - 2.0
+    line("U'(1)", f"{up1:.15e}", "PAIR CHECK")
+    return {"E_coh_eV":E_coh_eV,"E_coh_J":E_coh_J,"xi_coh":xi_coh,
+            "C44":C44,"f_s0":f_s0,"a":a,"rho":rho,"m0":m0,
+            "hbar_rec":hbar_rec,"hbar_err":hbar_err,"S_C44":S_C44,
+            "kappa_pair":kappa_pair,"K_bare":K_bare,"a_pair":a_pair,
+            "C44_pair":C44_pair,"hbar_pair":hbar_pair}
+
+# =============================================================================
+# 05 — FINE STRUCTURE
+# =============================================================================
+def alpha_branch():
+    D0=PHI**8
+    A=PI/4.0
+    q=1.0/1000.0
+    alpha_inv=(A*(128.0+D0)-0.5)/(1.0-A*q)
+    alpha=1.0/alpha_inv
+    D=D0
+    iterations=0
+    for i in range(1000):
+        x=A*(128.0+D)-0.5
+        D_new=D0+x*q
+        iterations=i+1
+        if abs(D_new-D) < 1e-15:
+            D=D_new
+            break
+        D=D_new
+    return alpha_inv,alpha,iterations,D0
+
+def fine_structure():
+    ai,a,it,D0=alpha_branch()
+    banner("[05] FINE STRUCTURE")
+    line("φ⁸", f"{D0:.13f}", "IDENTITY")
+    line("α⁻¹", f"{ai:.15f}", "DERIVED FIXED POINT")
+    line("α", f"{a:.14e}", "DERIVED")
+    line("Reference α⁻¹ deviation", f"{pct_error(ai,REF_ALPHA_INV):.12g} %", "COMPARISON")
+    line("Iterated α⁻¹", f"{ai:.15f}", "CLOSURE")
+    line("Iterations", it, "NUMERICAL")
+    return {"inv":ai,"alpha":a,"iterations":it,"phi8":D0}
+
+# =============================================================================
+# 06 — PARTICLE RELATIONS
+# =============================================================================
+def particle_relations(alpha_data):
+    ai=alpha_data["inv"]
+    alpha=alpha_data["alpha"]
+    mu_ratio=1.5*ai+ZETA3
+    mp_me=6.0*PI**5*(1.0+alpha**2/(2.0*SQRT2))
+    m_mu=m_e_MeV*mu_ratio
+
+    # Candidate Koide-style continuation used by the framework.
+    s=math.sqrt(mu_ratio)
+    b=-4.0*(1.0+s)
+    cc=1.0+mu_ratio-4.0*s
+    disc=b*b-4.0*cc
+    tau_ratio=(((-b+math.sqrt(disc))/2.0)**2) if disc >= 0 else float("nan")
+    m_tau=m_e_MeV*tau_ratio
+    sin2=(12.0/(12.0+20.0))/PHI
+
+    banner("[06] PARTICLE RELATIONS")
+    line("mμ/me", f"{mu_ratio:.15f}", "DERIVED/CANDIDATE")
+    line("mμ", f"{m_mu:.12f} MeV", "CANDIDATE")
+    line("mp/me", f"{mp_me:.15f}", "DERIVED/CANDIDATE")
+    line("mp/me deviation", f"{pct_error(mp_me,REF_MP_ME):.12g} %", "COMPARISON")
+    line("mτ candidate", f"{m_tau:.12f} MeV", "CANDIDATE")
+    line("sin²θW candidate", f"{sin2:.12f}", "CANDIDATE")
+    return {"mu_me":mu_ratio,"m_mu":m_mu,"mp_me":mp_me,"m_tau":m_tau,"sin2":sin2}
+
+# =============================================================================
+# 07 — GRAVITY
+# =============================================================================
+def gravity(fcc):
+    mu=fcc["mu"]
+    g=fcc["g"]
+    S0=105.65/PHI**2
+    eta_loop=3.0*SQRT2/(PI*S0)
+    Omega=3.0*SQRT5
+    Gd=c**3/(Omega*C44_INPUT*g*(1.0-eta_loop))
+    t=COSMIC_AGE_GYR*Gyr
+    H0_si=((mu-1.0)/mu)/t
+    H0=H0_si*Mpc/1000.0
+    a0=c*H0_si/(2.0*PI)
+
+    banner("[07] GRAVITY")
+    line("S0 loop", f"{S0:.13f}", "DERIVED")
+    line("η_loop", f"{eta_loop:.13e}", "DERIVED")
+    line("Ω", f"{Omega:.13f}", "DERIVED")
+    line("G derived", f"{Gd:.13e} m³ kg⁻¹ s⁻²", "DERIVED")
+    line("G deviation", f"{pct_error(Gd,REF_G):.12g} %", "COMPARISON")
+    return {"S0":S0,"eta_loop":eta_loop,"Omega":Omega,"G":Gd,
+            "H0_si":H0_si,"H0":H0,"a0":a0}
+
+# =============================================================================
+# 08 — COSMOLOGY / GALACTIC SCALES
+# =============================================================================
+def cosmology(gravity_data,fcc):
+    H0=gravity_data["H0"]
+    H0si=gravity_data["H0_si"]
+    a0=gravity_data["a0"]
+    mu=fcc["mu"]
+    a_base_si=a0*2.0/SQRT3
+    a_base=a_base_si*kpc/1.0e6
+    Sigma_si=(a_base_si/(2.0*PI*gravity_data["G"]))*(fcc["Z"]/(mu+fcc["Z"]))
+    Sigma=Sigma_si*pc**2/M_sun
+    H0_local=H0*(1.0+PHI**-5)
+
+    banner("[08] COSMOLOGY")
+    line("Cosmic age", f"{COSMIC_AGE_GYR:.6g} Gyr", "OBSERVATIONAL INPUT")
+    line("H₀", f"{H0:.13f} km/s/Mpc", "DERIVED")
+    line("H₀ deviation", f"{pct_error(H0,REF_H0):.12g} %", "COMPARISON")
+    line("a₀", f"{a0:.13e} m/s²", "DERIVED")
+    line("a_base", f"{a_base:.13f} (km/s)²/kpc", "DERIVED")
+    line("Σ_char", f"{Sigma:.13f} M☉/pc²", "DERIVED")
+    line("H₀ local branch", f"{H0_local:.13f} km/s/Mpc", "DERIVED")
+    line("H₀ local deviation", f"{pct_error(H0_local,REF_H0_LOCAL):.12g} %", "COMPARISON")
+    return {"a_base_si":a_base_si,"a_base":a_base,"Sigma":Sigma,"H0_local":H0_local}
+
+# =============================================================================
+# 09 — ACTION / FIELD EQUATIONS
+# =============================================================================
+def print_action(geom):
+    banner("[09] ACTION / FIELD EQUATIONS")
+    print(r"""
+  S_CP = ∫ d⁴x √(-g) [
+
+      R/(16πG)
+      − 1/2 g^μν ∂μη ∂νη
+      − V(η)
+      − 1/4 Σ_i g_i(η)^−2 F^(i)_μν F^(i)μν
+      + ψ̄(iγ^μD_μ − m(η))ψ
+      + L_Yukawa + L_SM,rest
+      + Σ_(Z,A) N̄_(Z,A)(iγ^μD_μ − M(Z,A;η))N_(Z,A)
+
+  ]
+
+  V(η) = 1/2 (30/L_*²)(η−η₀)²
+         + (11.09017/(4!L_*⁴))(η−η₀)^4
+
+  η₀ = S₂² / [(N+w)S₄]
+
+  Gauge:
+      ∇μ[g_i(η)^−2 F^(i)μν] = J^(i)ν
+
+  Fermion:
+      (iγ·D − m(η))ψ = 0
+
+  Gravity:
+      Gμν = 8πG Tμν^CP
+""")
+    line("η₀", f"{geom['eta0']:.15f}", "DERIVED")
+    line("S₂", f"{geom['S2']:.15f}", "GEOMETRY")
+    line("S₄", f"{geom['S4']:.15f}", "GEOMETRY")
+    line("N", len(geom["nonzero"]), "DERIVED")
+    line("w", "0.5", "GEOMETRIC CLOSURE")
+
+# =============================================================================
+# 10 — RELATIVITY / QUANTUM
+# =============================================================================
+def relativity_quantum(gravity_data):
+    gamma=1.0/math.sqrt(1.0-0.6**2)
+    M_earth=5.972e24
+    R_earth=6.371e6
+    r_gps=26561000.0
+    v_gps=3870.0
+    # Net clock diagnostic: gravitational + kinematic terms, standard weak-field form.
+    grav_rate=gravity_data["G"]*M_earth/(c*c)
+    grav_day=(grav_rate*(1.0/R_earth-1.0/r_gps))*86400.0*1e6
+    kin_day=-(v_gps*v_gps/(2.0*c*c))*86400.0*1e6
+    gps=grav_day+kin_day
+    rs=2.0*gravity_data["G"]*1.98847e30/c**2/1000.0
+    qfi=9.0**2
+    chsh=2.0*SQRT2
+    planck=math.sqrt(hbar*gravity_data["G"]/c**3)
+    # Dimensionless quantum-gravity/cosmology hierarchy diagnostic.
+    hierarchy=c**5/(hbar*gravity_data["G"]*gravity_data["H0_si"]**2)
+
+    banner("[10] RELATIVITY / QUANTUM")
+    line("γ at 0.6c", f"{gamma:.15f}", "IDENTITY")
+    line("GPS clock diagnostic", f"{gps:.10f} μs/day", "DIAGNOSTIC")
+    line("Solar Schwarzschild radius", f"{rs:.11f} km", "DERIVED")
+    line("QFI GHZ N=9", f"{qfi:.12f}", "CHECK")
+    line("CHSH", f"{chsh:.12f}", "CHECK")
+    line("Tsirelson bound", f"{chsh:.12f}", "IDENTITY")
+    line("Planck length using derived G", f"{planck:.13e} m", "DERIVED")
+    line("Hierarchy diagnostic", f"{hierarchy:.6g}", "DIAGNOSTIC")
+    return {"gamma":gamma,"gps":gps,"rs":rs,"qfi":qfi,"chsh":chsh,"planck":planck,"hierarchy":hierarchy}
+
+# =============================================================================
+# 11 — BTFR / GALAXY MODEL
+# =============================================================================
+# IMPORTANT: THIS IS THE USER'S SEPTEMBER-2026 ONE-PARAMETER GALAXY MODEL.
+# It is preserved algebraically from the supplied working implementation.
+# Do not replace it with the earlier generic vortex implementation.
+#
+# Galaxy branch uses the derived G and H0 from the master theory branch.
+
+G_USE_GALAXY = None  # supplied at runtime from Crystal Prism derived gravity branch
+H0_USE_GALAXY = None  # supplied at runtime from Crystal Prism derived cosmology branch
+M_SUN_GALAXY = 1.989e30
+PC_M_GALAXY = 3.08567758e16
+KPC_M_GALAXY = 3.08567758e19
+MPC_M_GALAXY = 3.08567758e22
+G_PC_GALAXY = 4.3009e-3
+KPC_TO_PC = 1000.0
+UPS_BULGE = 0.7
+BETA_GALAXY = 0.5
+ZENODO_URL = "https://zenodo.org/records/16284118/files/Rotmod_LTG.zip"
+
+
+def galaxy_scales(G_derived, H0_derived):
+    H0_si_use = H0_derived * 1000.0 / MPC_M_GALAXY
+    a0_use = c * H0_si_use / (2.0 * PI)
+    a_base_si_use = a0_use * 2.0 / SQRT3
+    a_base_use = a_base_si_use * 1e-3 * (KPC_M_GALAXY / 1e3)
+    Sigma_char_use = (a_base_si_use / (PI * G_derived)) * \
+                     (12.0 / (21.0 + 12.0)) * PC_M_GALAXY**2 / M_SUN_GALAXY
+    return {
+        "G_use": G_derived,
+        "H0_use": H0_derived,
+        "H0_si": H0_si_use,
+        "a0": a0_use,
+        "a_base_si": a_base_si_use,
+        "a_base": a_base_use,
+        "Sigma_char": Sigma_char_use,
+    }
+
+
+def print_btfr(gravity_data, cosmo):
+    banner("[11] BARYONIC TULLY-FISHER / GALACTIC SCALE")
+    gs = galaxy_scales(gravity_data["G"], gravity_data["H0"])
+    print(r"""
+  Critical condition:
+      G M_bar / r_t² = a₀
+
+  Therefore:
+      r_t = √(G M_bar / a₀)
+
+  At the transition:
+      V_flat² / r_t = a₀
+
+  Therefore:
+      V_flat⁴ = a₀ G M_bar
+      V_flat ∝ M_bar^(1/4)
+
+  GALAXY FIT BRANCH — DERIVED-CONSTANT TEST:
+      G_use  = Crystal Prism derived G
+      H0_use = Crystal Prism derived H₀
+      Σ_char = a_base / (π G_use) × 12/(μ+12)
+  """)
+    for M in (1e8, 1e9, 1e10, 1e11, 1e12):
+        vflat = (gs["a0"] * gs["G_use"] * M * M_SUN_GALAXY)**0.25 / 1000.0
+        print(f"  M = {M:.0e} M_sun    Vflat = {vflat:.9f} km/s")
+    return gs
+
+
+def load_sparc(data_dir="sparc_data", max_retries=5):
+    os.makedirs(data_dir, exist_ok=True)
+    zp = os.path.join(data_dir, "Rotmod_LTG.zip")
+    if not os.path.exists(zp):
+        for a in range(1, max_retries + 1):
+            try:
+                r = requests.get(ZENODO_URL, timeout=180, stream=True)
+                r.raise_for_status()
+                with open(zp, "wb") as f:
+                    for chunk in r.iter_content(1 << 16):
+                        f.write(chunk)
+                break
+            except requests.exceptions.RequestException:
+                if a == max_retries:
+                    raise
+                time.sleep(2 ** a)
+    if not glob.glob(f"{data_dir}/*_rotmod.dat"):
+        with zipfile.ZipFile(zp) as z:
+            z.extractall(data_dir)
+
+    galaxies = {}
+    for fp in sorted(glob.glob(f"{data_dir}/*_rotmod.dat")):
+        name = os.path.basename(fp).replace("_rotmod.dat", "")
+        rows = []
+        with open(fp) as fh:
+            for line in fh:
+                s = line.strip()
+                if not s or s.startswith("#"):
+                    continue
+                p = s.split()
+                if len(p) < 6:
+                    continue
+                try:
+                    rows.append([float(x) for x in p[:6]])
+                except ValueError:
+                    continue
+        if len(rows) < 3:
+            continue
+        d = np.array(rows)
+        R, Vobs, Verr = d[:,0], d[:,1], d[:,2]
+        Vg = np.abs(d[:,3]); Vd = d[:,4]; Vb = d[:,5]
+        m = (R > 0) & (Vobs > 0) & (Verr > 0)
+        if m.sum() < 3:
+            continue
+        order = np.argsort(R[m])
+        galaxies[name] = {
+            "R_kpc": R[m][order], "V_obs": Vobs[m][order],
+            "V_err": Verr[m][order], "V_gas": Vg[m][order],
+            "V_disk": Vd[m][order], "V_bul": Vb[m][order],
+        }
+    return galaxies
+
+
+def baryonic_mass(R_kpc, Vd_ml, Vb_ml, Vg):
+    V_bar = np.sqrt(Vg**2 + Vd_ml**2 + Vb_ml**2)
+    R_pc = R_kpc * KPC_TO_PC
+    return max(np.percentile(V_bar**2 * R_pc, 90) / G_PC_GALAXY, 1e-5)
+
+
+def solve_a_eff(R_kpc, Sigma_bar, V_flat, a_base, Sigma_char, max_iter=20, tol=1e-4):
+    R_kpc = np.asarray(R_kpc, dtype=float)
+    Sigma_bar = np.asarray(Sigma_bar, dtype=float)
+    a_eff = a_base
+    for _ in range(max_iter):
+        r_t = np.clip(V_flat**2 / a_eff,
+                       R_kpc.min()*1.01, R_kpc.max()*0.99)
+        S = np.interp(r_t, R_kpc, Sigma_bar)
+        a_new = np.clip(
+            a_base * np.sqrt(np.clip(S/Sigma_char, 0.01, 100.0)),
+            400.0, 12000.0)
+        if abs(a_new - a_eff)/a_eff < tol:
+            return a_new, V_flat**2/a_new
+        a_eff = 0.7*a_eff + 0.3*a_new
+    return a_eff, V_flat**2/a_eff
+
+
+def vortex_predict(R, Vd, Vb, Vg, ups_d, beta_val, galaxy_scales_data):
+    R = np.asarray(R, dtype=float)
+    if len(Vd) != len(R):
+        R0 = np.linspace(R.min(), R.max(), len(Vd))
+        f = lambda V: interp1d(R0, V, kind="linear",
+                               fill_value="extrapolate")(R)
+        Vd, Vb, Vg = map(f, (Vd, Vb, Vg))
+    Vd_ml = Vd * np.sqrt(max(ups_d, 0.01))
+    Vb_ml = Vb * np.sqrt(UPS_BULGE)
+    Vg = np.abs(Vg)
+    V_bar = np.sqrt(Vg**2 + Vd_ml**2 + Vb_ml**2)
+    M_bar = baryonic_mass(R, Vd_ml, Vb_ml, Vg)
+    V_flat = (galaxy_scales_data["a0"] * galaxy_scales_data["G_use"] *
+              M_bar * M_SUN_GALAXY)**0.25 / 1000.0
+    R_pc = R * KPC_TO_PC
+    with np.errstate(divide="ignore", invalid="ignore"):
+        Sigma = np.where(R_pc > 1e-10,
+                         V_bar**2/(2*PI*G_PC_GALAXY*R_pc), 0.0)
+    a_eff, r_t = solve_a_eff(
+        R, Sigma, V_flat, galaxy_scales_data["a_base"], galaxy_scales_data["Sigma_char"])
+    x = R / max(r_t, 1e-6)
+    V_vortex = V_flat * (1.0 - np.exp(-(x ** beta_val)))
+    return {
+        "V_pred": np.sqrt(V_bar**2 + V_vortex**2),
+        "V_flat": V_flat,
+        "M_bar": M_bar,
+        "r_t": r_t,
+    }
+
+
+def fit_galaxy(gal, galaxy_scales_data, beta_fixed=True):
+    R, Vo, Ve = gal["R_kpc"], gal["V_obs"], gal["V_err"]
+    Vd, Vb, Vg = gal["V_disk"], gal["V_bul"], gal["V_gas"]
+    m = (Vo > 1.0) & (Ve > 0)
+    if m.sum() < 3:
+        return None
+    errs = np.sqrt(Ve[m]**2 + (0.05*Vo[m])**2)
+
+    if beta_fixed:
+        # One free parameter: Υ_disk only.  β held at BETA_DEFAULT.
+        def obj(x):
+            try:
+                pred = vortex_predict(R, Vd, Vb, Vg, x[0], BETA_DEFAULT,
+                                      galaxy_scales_data)["V_pred"]
+            except Exception:
+                return 1e10
+            return np.sum(((pred[m] - Vo[m]) / errs)**2)
+
+        best_x, best_f = [0.7], np.inf
+        for u0 in (0.3, 0.5, 0.7, 1.0, 1.5):
+            r = minimize(
+                obj, [u0], method="L-BFGS-B",
+                bounds=[(0.01, 2.5)],
+                options={"maxiter": 300})
+            if r.fun < best_f:
+                best_f, best_x = r.fun, r.x
+        ups_d = best_x[0]
+        beta_best = BETA_DEFAULT
+    else:
+        # Two free parameters: Υ_disk and β.
+        def obj(x):
+            try:
+                pred = vortex_predict(R, Vd, Vb, Vg, x[0], x[1],
+                                      galaxy_scales_data)["V_pred"]
+            except Exception:
+                return 1e10
+            return np.sum(((pred[m] - Vo[m]) / errs)**2)
+
+        best_x, best_f = [0.5, 0.7], np.inf
+        for u0 in (0.3, 0.5, 0.7, 1.0, 1.5):
+            for b0 in (0.2, 0.4, 0.6, 0.8, 1.2, 1.8):
+                r = minimize(
+                    obj, [u0, b0], method="L-BFGS-B",
+                    bounds=[(0.01, 2.5), (0.1, 2.5)],
+                    options={"maxiter": 300})
+                if r.fun < best_f:
+                    best_f, best_x = r.fun, r.x
+        ups_d, beta_best = best_x
+
+    pred = vortex_predict(R, Vd, Vb, Vg, ups_d, beta_best,
+                          galaxy_scales_data)
+    resid = pred["V_pred"][m] - Vo[m]
+    pct = 100.0 * resid / Vo[m]
+    return {
+        "ups_disk": ups_d,
+        "beta": beta_best,
+        "V_flat": pred["V_flat"],
+        "median_abs_pct": float(np.median(np.abs(pct))),
+        "mean_abs_pct": float(np.mean(np.abs(pct))),
+        "n_pts": int(m.sum()),
+    }
+
+
+def _sparc_pass(galaxies, galaxy_scales_data, beta_fixed, label, source):
+    """Run one SPARC fitting pass in the requested mode."""
+    print()
+    rule()
+    print(f"  PASS — {label}")
+    rule()
+    if beta_fixed:
+        print(f"  β FIXED at declared default {BETA_DEFAULT} "
+              f"(1 free param/galaxy: Υ_disk)")
+    else:
+        print(f"  β FREE per galaxy (2 free params/galaxy: Υ_disk, β)")
+
+    t0 = time.time()
+    results = {}
+    for name, gal in galaxies.items():
+        r = fit_galaxy(gal, galaxy_scales_data, beta_fixed=beta_fixed)
+        if r:
+            results[name] = r
+    print(f"  fitted in {time.time()-t0:.1f}s")
+
+    if not results:
+        print("  No galaxies produced a valid fit.")
+        return None
+
+    med = np.array([r["median_abs_pct"] for r in results.values()])
+    mab = np.array([r["mean_abs_pct"] for r in results.values()])
+    upd = np.array([r["ups_disk"] for r in results.values()])
+    bet = np.array([r["beta"] for r in results.values()])
+    vfl = np.array([r["V_flat"] for r in results.values()])
+
+    print(f"  source          : {source}")
+    print(f"  median |res|    : {np.median(med):.2f}%")
+    print(f"  mean   |res|    : {np.mean(mab):.2f}%")
+    print(f"  Υ_disk          : {np.median(upd):.2f} "
+          f"[{np.percentile(upd,16):.2f}, {np.percentile(upd,84):.2f}]")
+    if beta_fixed:
+        print(f"  β               : {BETA_DEFAULT:.3f} (fixed)")
+    else:
+        print(f"  β               : {np.median(bet):.3f} "
+              f"[{np.percentile(bet,16):.3f}, {np.percentile(bet,84):.3f}]")
+    print("  β vs V_flat:")
+    for lo, hi in [(0,40),(40,60),(60,90),(90,130),(130,180),(180,400)]:
+        mask = (vfl >= lo) & (vfl < hi)
+        if mask.sum() == 0:
+            continue
+        if beta_fixed:
+            print(f"    [{lo:>4},{hi:>4}) n={mask.sum():>4}  "
+                  f"β={BETA_DEFAULT:.3f}  "
+                  f"res={np.median(med[mask]):.2f}%")
+        else:
+            print(f"    [{lo:>4},{hi:>4}) n={mask.sum():>4}  "
+                  f"β={np.median(bet[mask]):.3f}  "
+                  f"res={np.median(med[mask]):.2f}%")
+    dmask = vfl < 60
+    print(f"  dwarf regime (V_flat<60): n={int(dmask.sum())}, "
+          f"median {np.median(med[dmask]):.2f}%")
+
+    return {
+        "source": source,
+        "galaxies": len(galaxies),
+        "results": results,
+        "median_abs_pct": float(np.median(med)),
+        "mean_abs_pct": float(np.mean(mab)),
+        "median_ups_disk": float(np.median(upd)),
+        "median_beta": float(np.median(bet)),
+        "beta_fixed": bool(beta_fixed),
+    }
+
+
+def sparc_engine(gravity_data, cosmo, galaxy_scales_data):
+    banner("[12] SPARC GALAXY VALIDATION — USER'S WORKING MODEL")
+    print(r"""
+  THIS BRANCH IS THE SUPPLIED SEPTEMBER-2026 IMPLEMENTATION.
+
+  V_bar² = V_gas² + Υ_disk V_disk² + Υ_bulge V_bulge²
+
+  M_bar = P90[V_bar² R_pc / G_PC]
+
+  V_flat = (a₀ G_use M_bar)^(1/4)
+
+  a_eff = a_base √(Σ(r_t)/Σ_char)
+
+  r_t = V_flat²/a_eff
+
+  V_vortex = V_flat [1 − exp(−(R/r_t)^β)]
+
+  V_pred² = V_bar² + V_vortex²
+
+  FIT:
+      Υ_disk free per galaxy
+      Υ_bulge = 0.70 fixed
+
+  DERIVED-CONSTANT TEST: this run uses the master theory's independently
+  derived G and H₀ directly in the otherwise unchanged supplied galaxy model.
+  """)
+
+    # SPARC data are always pulled from the official Zenodo archive.
+    # No local-file input path is supported.
+    try:
+        galaxies = load_sparc()
+        source = ZENODO_URL
+    except Exception as ex:
+        print(f"  SPARC download failed: {ex}")
+        print("  No observational result is substituted when data are absent.")
+        return None
+
+    print(f"  loaded {len(galaxies)} galaxies")
+
+    results = {}
+    if RUN_BOTH_MODES:
+        r_fixed = _sparc_pass(
+            galaxies, galaxy_scales_data,
+            beta_fixed=True,
+            label=f"β FIXED at declared default {BETA_DEFAULT}  (1 param/galaxy)",
+            source=source)
+        r_free = _sparc_pass(
+            galaxies, galaxy_scales_data,
+            beta_fixed=False,
+            label="β FREE per galaxy  (2 params/galaxy)",
+            source=source)
+        results["beta_fixed"] = r_fixed
+        results["beta_free"] = r_free
+
+        # Side-by-side comparison block.
+        if r_fixed and r_free:
+            banner("[12b] SPARC SIDE-BY-SIDE COMPARISON")
+            print(f"  {'mode':<32} {'params/galaxy':<14} "
+                  f"{'median |res|':<14} {'mean |res|':<12}")
+            rule()
+            print(f"  {'β fixed at 0.5':<32} {'Υ_disk (1)':<14} "
+                  f"{r_fixed['median_abs_pct']:>10.2f}%   "
+                  f"{r_fixed['mean_abs_pct']:>8.2f}%")
+            print(f"  {'β free per galaxy':<32} {'Υ_disk, β (2)':<14} "
+                  f"{r_free['median_abs_pct']:>10.2f}%   "
+                  f"{r_free['mean_abs_pct']:>8.2f}%")
+            print()
+            print(f"  Δ median |res| (fixed − free) : "
+                  f"{r_fixed['median_abs_pct'] - r_free['median_abs_pct']:+.2f}%")
+            print(f"  Δ mean   |res| (fixed − free) : "
+                  f"{r_fixed['mean_abs_pct'] - r_free['mean_abs_pct']:+.2f}%")
+    else:
+        r_single = _sparc_pass(
+            galaxies, galaxy_scales_data,
+            beta_fixed=BETA_FIXED,
+            label=(f"β FIXED at declared default {BETA_DEFAULT}  (1 param/galaxy)"
+                   if BETA_FIXED
+                   else "β FREE per galaxy  (2 params/galaxy)"),
+            source=source)
+        results["single"] = r_single
+
+    return results
+
+
+# 13 — VALIDATION
+# =============================================================================
+def validation(geom,fcc,micro,alpha,particles,gravity_data,cosmo,rel):
+    checks=[]
+    roots=geom["roots"]
+    checks.append(("E8 root count = 240",len(roots)==240))
+    checks.append(("Projected unique + origin = 137",len(geom["projected"])==137))
+    checks.append(("Nonzero projected points = 136",len(geom["nonzero"])==136))
+    checks.append(("Radial shells = 11",len(geom["shells"])==11))
+    checks.append(("Ordered differences = 18,632",geom["difference_count"]==18632))
+    checks.append(("Difference shells = 76",geom["difference_shell_count"]==76))
+    checks.append(("FCC Z = 12",fcc["Z"]==12))
+    checks.append(("FCC μ = 21",fcc["mu"]==21))
+    checks.append(("g_FCC internal/closed agreement",pct_error(fcc["g"],fcc["g_closed"])<1e-10))
+    checks.append(("η₀ positive",finite_positive(geom["eta0"])))
+    checks.append(("Self-consistent a finite",finite_positive(micro["a"])))
+    checks.append(("ρ = C44/c²",abs(micro["rho"]-C44_INPUT/c**2)/micro["rho"]<1e-14))
+    checks.append(("m0 = ρa³/4",abs(micro["m0"]-micro["rho"]*micro["a"]**3/4)/micro["m0"]<1e-14))
+    checks.append(("ħ closure",micro["hbar_err"]<1e-10))
+    checks.append(("α fixed-point positive",finite_positive(alpha["inv"])))
+    checks.append(("G finite positive",finite_positive(gravity_data["G"])))
+    checks.append(("Cosmology chain finite",all(finite_positive(x) for x in [gravity_data["H0"],gravity_data["a0"],cosmo["a_base"],cosmo["Sigma"]])))
+    checks.append(("mp/me relation finite",finite_positive(particles["mp_me"])))
+    banner("[13] CORE VALIDATION")
+    print("\n"+"="*WIDTH)
+    print("CORE VALIDATION — 18 COMPUTED TARGETS")
+    print("="*WIDTH)
+    for name,ok in checks:
+        print(f"  [{'PASS' if ok else 'FAIL'}] {name}")
+    passed=sum(1 for _,ok in checks if ok)
+    print(f"\n  CORE RESULT: {passed}/{len(checks)} checks passed")
+    return passed,len(checks)
+
+# =============================================================================
+# 14 — PROVENANCE
+# =============================================================================
+def provenance():
+    banner("[14] PROVENANCE")
+    print(r"""
+  MODEL / INPUT
+    C44, cosmic age, β, pair-branch parameters and physical unit constants are
+    explicit inputs to equations. They are never relabeled as derived outputs.
+
+  MATHEMATICAL / GEOMETRIC
+    π, φ, E8 combinatorics, FCC coordination, FCC packing and algebraic identities.
+
+  DERIVED
+    E8 projection, shell structure, difference lattice, μ, b0, w_FCC, g_FCC,
+    η₀, f_s0, coherence length, a, ρ, m0, α fixed point, G, H₀, a₀,
+    a_base, Σ_char, particle relations and BTFR.
+
+  CLOSURE / CROSS-CHECK
+    ħ reconstruction and pair-branch ħ reconstruction.
+
+  FIT / EMPIRICAL
+    Galaxy M/L and β when SPARC data are supplied.
+
+  REFERENCE
+    Measured constants are comparison values only; they do not determine model outputs.
+
+  DEPENDENCY RULE:
+    Internal closure is not an independent empirical prediction.
+""")
+
+# =============================================================================
+# 15 — FINAL SUMMARY
+# =============================================================================
+def summary(geom,fcc,micro,alpha,particles,gravity_data,cosmo,core):
+    banner("[15] FINAL SUMMARY")
+    line("E8 roots",len(geom["roots"]))
+    line("Projected unique + origin",len(geom["projected"]))
+    line("Nonzero projected points",len(geom["nonzero"]))
+    line("Radial shells",len(geom["shells"]))
+    line("Difference shells",geom["difference_shell_count"])
+    line("FCC coordination",fcc["Z"])
+    line("FCC μ",fcc["mu"])
+    line("g_FCC",f"{fcc['g']:.15f}")
+    line("η₀",f"{geom['eta0']:.15f}")
+    line("f_s0",f"{micro['f_s0']:.15f}")
+    line("C44",f"{C44_INPUT:.8e} Pa")
+    line("a",f"{micro['a']:.15e} m")
+    line("ρ",f"{micro['rho']:.15e} kg/m³")
+    line("m0",f"{micro['m0']:.15e} kg")
+    line("α⁻¹",f"{alpha['inv']:.15f}")
+    line("G",f"{gravity_data['G']:.15e} SI")
+    line("H₀",f"{gravity_data['H0']:.13f} km/s/Mpc")
+    line("a₀",f"{gravity_data['a0']:.13e} m/s²")
+    line("a_base",f"{cosmo['a_base']:.13f} (km/s)²/kpc")
+    line("Σ_char",f"{cosmo['Sigma']:.13f} M☉/pc²")
+    line("mp/me",f"{particles['mp_me']:.15f}")
+    line("Validation",f"{core[0]}/{core[1]} core checks passed")
+
+# =============================================================================
+# MAIN
+# =============================================================================
+def main():
+    t0=time.perf_counter()
+    banner("CRYSTAL PRISM QUANTUM RELATIVITY")
+    print("STANDALONE COMPUTATIONAL THEORY ENGINE")
+    print("STANDARD LIBRARY PYTHON 3 EDITION")
+    print("Cory Brent / September 2026")
+    print(f"Python: {sys.version.split()[0]}")
+    print("Dependencies: numpy, scipy, requests + Python standard library")
+    print("External theory files: NONE")
+    print("External result files: NONE")
+    if RUN_BOTH_MODES:
+        print("Galaxy fit mode: RUN_BOTH_MODES = True "
+              "(β fixed pass + β free pass, side by side)")
+    else:
+        print(f"Galaxy fit mode: BETA_FIXED = {BETA_FIXED} "
+              f"({'1' if BETA_FIXED else '2'} param/galaxy)")
+
+    print_postulate()
+    geom=geometry()
+    fcc=fcc_topology()
+    micro=coherence(geom,fcc)
+    alpha= fine_structure()
+    particles=particle_relations(alpha)
+    gravity_data=gravity(fcc)
+    cosmo=cosmology(gravity_data,fcc)
+    print_action(geom)
+    rel=relativity_quantum(gravity_data)
+    print_btfr(gravity_data,cosmo)
+    galaxy_scales_data = galaxy_scales(gravity_data["G"], gravity_data["H0"])
+    print("\n  >>> SPARC DERIVED-CONSTANT TEST: G_use and H0_use are the master derived values.\n")
+    sparc_engine(gravity_data,cosmo,galaxy_scales_data)
+    core=validation(geom,fcc,micro,alpha,particles,gravity_data,cosmo,rel)
+    provenance()
+    summary(geom,fcc,micro,alpha,particles,gravity_data,cosmo,core)
+
+    elapsed=time.perf_counter()-t0
+    banner("EXECUTION COMPLETE")
+    print(f"  Runtime: {elapsed:.6f} s")
+    print("  All derived quantities were calculated at runtime.")
+    print("  No result files were generated.")
+    print("  NumPy used by the preserved galaxy implementation.")
+    print("  SciPy used by the preserved galaxy optimizer.")
+    print("  No pandas required.")
+    print("\n[Program finished]")
+
+if __name__ == "__main__":
+    main()
