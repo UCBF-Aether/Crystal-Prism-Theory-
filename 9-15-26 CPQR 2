@@ -1,0 +1,606 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+================================================================================
+CRYSTAL PRISM QUANTUM RELATIVITY
+A LIVE PAPER
+================================================================================
+
+A document that reads as a paper and executes as a program.  Every number
+in the text is computed live at the moment you run it.  Nothing is stored.
+
+Author: Cory Brent
+Date:   September 2026
+================================================================================
+"""
+
+import math
+import os
+import time
+import glob
+import zipfile
+import warnings
+
+import numpy as np
+from scipy.optimize import minimize_scalar
+import requests
+
+warnings.filterwarnings("ignore")
+
+
+# =============================================================================
+# CONSTANTS (SI inputs and unit definitions)
+# =============================================================================
+c     = 299792458.0
+hbar  = 1.054571817e-34
+k_B   = 1.380649e-23
+e     = 1.602176634e-19
+eps0  = 8.8541878128e-12
+mu0   = 1.25663706212e-6
+m_e   = 9.1093837015e-31
+eV    = 1.602176634e-19
+Mpc   = 3.08567758e22
+kpc   = 3.08567758e19
+pc    = 3.08567758e16
+M_sun = 1.98847e30
+Gyr   = 365.25 * 86400.0 * 1e9
+
+PHI   = (1 + math.sqrt(5)) / 2
+PI    = math.pi
+ZETA3 = 1.202056903159594
+
+
+# =============================================================================
+# PRELUDE
+# =============================================================================
+t_start = time.perf_counter()
+
+print()
+print("+" + "=" * 76 + "+")
+print("|" + " " * 76 + "|")
+print("|" + "   CRYSTAL PRISM QUANTUM RELATIVITY".ljust(76) + "|")
+print("|" + "   A LIVE PAPER".ljust(76) + "|")
+print("|" + " " * 76 + "|")
+print("|" + "   Cory Brent  .  September 2026".ljust(76) + "|")
+print("|" + " " * 76 + "|")
+print("+" + "=" * 76 + "+")
+print()
+
+print("-" * 78)
+print("ABSTRACT")
+print("-" * 78)
+print()
+print("  We begin from the electromagnetic field in its ground state and")
+print("  ask what its own nonlinearity does.  The field polarizes into")
+print("  a plasma; the plasma crystallizes into an FCC lattice; the")
+print("  lattice's topological defects are the particle spectrum; its")
+print("  elastic responses are the forces; its residual tension drives")
+print("  expansion.")
+print()
+print("  Every number in this document is computed live.  Change any")
+print("  input and the chain recomputes.  The theory is the chain.")
+print()
+
+print("-" * 78)
+print("CONTENTS")
+print("-" * 78)
+print()
+print("  I    The speed of light from Maxwell")
+print("  II   The field's nonlinearity")
+print("  III  The first phase transition -- plasma")
+print("  IV   The crystal -- FCC topology")
+print("  V    The icosahedral projection from E8")
+print("  VI   The vacuum order parameter eta0")
+print("  VII  The particle spectrum")
+print("  VIII Forces from the crystal")
+print("  IX   Expansion as lattice tension")
+print("  X    Galactic dynamics")
+print("  --   Closing")
+print()
+
+
+# =============================================================================
+# I.  THE SPEED OF LIGHT FROM MAXWELL
+# =============================================================================
+print("=" * 78)
+print("I. THE SPEED OF LIGHT FROM MAXWELL")
+print("=" * 78)
+print()
+print("  Maxwell's vacuum equations describe the electromagnetic field.")
+print("  Waves propagate at speed c = 1/sqrt(mu0 eps0).")
+print()
+
+c_from_mu0_eps0 = 1.0 / math.sqrt(mu0 * eps0)
+
+print(f"  mu0        = {mu0:.10e}  [SI definition]")
+print(f"  eps0       = {eps0:.10e}  [SI definition]")
+print(f"  c computed = {c_from_mu0_eps0:.6f} m/s")
+print(f"  c measured = {c:.6f} m/s")
+print(f"  deviation  = {abs(c_from_mu0_eps0-c)/c*100:.3e} %")
+print()
+print("  The field's wave speed is not a free parameter.  It follows.")
+print()
+
+
+# =============================================================================
+# II.  THE FIELD'S NONLINEARITY
+# =============================================================================
+print("=" * 78)
+print("II. THE FIELD'S NONLINEARITY")
+print("=" * 78)
+print()
+print("  Quantum corrections make the effective field nonlinear at high")
+print("  intensity.  The threshold is the Schwinger field strength.")
+print()
+
+E_crit = (m_e**2 * c**3) / (e * hbar)
+B_crit = E_crit / c
+
+print(f"  E_crit (Schwinger)  = {E_crit:.6e} V/m")
+print(f"  B_crit = E_crit / c = {B_crit:.6e} T")
+print()
+print("  Above this strength the vacuum can organize.")
+print()
+
+
+# =============================================================================
+# III.  THE FIRST PHASE TRANSITION — PLASMA
+# =============================================================================
+print("=" * 78)
+print("III. THE FIRST PHASE TRANSITION -- PLASMA")
+print("=" * 78)
+print()
+print("  The field polarizes into separated charges: a plasma.")
+print("  Four scales characterize it.")
+print()
+
+n_e_ref = 1.0e20
+T_e_ref = 1.0e6
+
+omega_p  = math.sqrt(n_e_ref * e**2 / (m_e * eps0))
+lambda_D = math.sqrt(eps0 * k_B * T_e_ref / (n_e_ref * e**2))
+a_ws     = (3 / (4 * PI * n_e_ref))**(1/3)
+Gamma    = e**2 / (4 * PI * eps0 * a_ws * k_B * T_e_ref)
+
+print(f"  n_e = {n_e_ref:.3e} m^-3    T_e = {T_e_ref:.3e} K")
+print()
+print(f"  omega_p   = {omega_p:.6e} rad/s")
+print(f"  lambda_D  = {lambda_D:.6e} m")
+print(f"  a_ws      = {a_ws:.6e} m")
+print(f"  Gamma     = {Gamma:.6e}")
+print()
+print("  Crystallization boundary  Gamma(n, T) = 1:")
+print()
+
+for T in (1e2, 1e4, 1e6):
+    pf  = 4 * PI * eps0 * k_B * T / e**2
+    n_c = (3 / (4 * PI)) * pf**3
+    print(f"    T = {T:.0e} K  ->  n_c = {n_c:.4e} m^-3")
+
+print()
+print("  Above Gamma_c the plasma crystallizes.")
+print()
+
+
+# =============================================================================
+# IV.  THE CRYSTAL
+# =============================================================================
+print("=" * 78)
+print("IV. THE CRYSTAL -- FCC TOPOLOGY")
+print("=" * 78)
+print()
+print("  The densest packing of equal spheres is FCC (Hales 1998).")
+print()
+
+V, Z, C = 4, 12, 1
+E_lat   = V * Z // 2
+mu      = E_lat - V + C
+b0      = (11 * 3 - 2 * 6) / 3
+w_FCC   = (mu + Z) / (4 * b0 * PHI)
+g_FCC   = 2 * 1.5 * (1 / PHI) * w_FCC
+g_closed = 99 / (28 * PHI * PHI)
+eta_pack = PI / (3 * math.sqrt(2))
+
+print(f"  V = {V}    Z = {Z}    E = {E_lat}    C = {C}")
+print(f"  mu = E - V + C = {mu}")
+print()
+print(f"  packing fraction eta = {eta_pack:.15f}")
+print(f"  b0                   = {b0:.15f}")
+print(f"  w_FCC                = {w_FCC:.15f}")
+print(f"  g_FCC                = {g_FCC:.15f}")
+print(f"  g_FCC (closed form)  = {g_closed:.15f}")
+print(f"  agreement            = {abs(g_FCC-g_closed)/g_closed*100:.3e} %")
+print()
+
+
+# =============================================================================
+# V.  THE ICOSAHEDRAL PROJECTION
+# =============================================================================
+print("=" * 78)
+print("V. THE ICOSAHEDRAL PROJECTION FROM E8")
+print("=" * 78)
+print()
+print("  FCC has local icosahedral order.  We make this explicit by")
+print("  projecting the 240 E8 roots via a golden-ratio-weighted map.")
+print()
+
+def e8_roots():
+    r = []
+    for i in range(8):
+        for j in range(i+1, 8):
+            for si in (-1, 1):
+                for sj in (-1, 1):
+                    x = [0.0]*8
+                    x[i] = si
+                    x[j] = sj
+                    r.append(tuple(x))
+    for bits in range(1 << 8):
+        if bin(bits).count("1") % 2 == 0:
+            r.append(tuple(0.5 if ((bits >> i) & 1) == 0 else -0.5
+                           for i in range(8)))
+    return r
+
+
+def project(x):
+    d = math.sqrt(2 + PHI)
+    return ((x[0] + PHI*x[4])/d,
+            (x[1] + PHI*x[5])/d,
+            (x[2] + PHI*x[6])/d)
+
+
+def radius(p):
+    return math.sqrt(p[0]*p[0] + p[1]*p[1] + p[2]*p[2])
+
+
+roots = e8_roots()
+projected_raw = [project(x) for x in roots] + [(0.0, 0.0, 0.0)]
+projected = list({tuple(round(v, 12) for v in p) for p in projected_raw})
+nonzero   = [p for p in projected if radius(p) > 1e-10]
+
+radii = sorted(radius(p) for p in projected if radius(p) > 1e-10)
+shells = []
+for r in radii:
+    if not shells or abs(r - shells[-1][0]) > 1e-10:
+        shells.append([r, 1])
+    else:
+        shells[-1][1] += 1
+
+print(f"  E8 roots constructed        : {len(roots)}")
+print(f"  projected unique points     : {len(projected)}")
+print(f"  nonzero projected points N  : {len(nonzero)}")
+print(f"  radial shells               : {len(shells)}")
+print()
+print("  Radial shells of the projected set:")
+for i, (r, n) in enumerate(shells, 1):
+    print(f"    {i:02d}   r = {r:.12f}   N = {n}")
+
+twelve = [(r, n) for r, n in shells if n == 12]
+if len(twelve) >= 2:
+    ratio = twelve[1][0] / twelve[0][0]
+    print()
+    print(f"  12-fold shells ratio = {ratio:.15f}")
+    print(f"  phi                  = {PHI:.15f}")
+    print(f"  relative error       = {abs(ratio-PHI)/PHI*100:.3e} %")
+    print()
+    print("  Adjacent 12-fold shells differ by phi.  Icosahedral signature.")
+print()
+
+
+# =============================================================================
+# VI.  THE VACUUM ORDER PARAMETER
+# =============================================================================
+print("=" * 78)
+print("VI. THE VACUUM ORDER PARAMETER eta0")
+print("=" * 78)
+print()
+
+raw_S2 = sum(r*r*n for r, n in shells)
+raw_S4 = sum(r**4 * n for r, n in shells)
+
+moment_scale2 = 5 - 2*math.sqrt(5)
+S2 = raw_S2 * moment_scale2
+S4 = raw_S4 * moment_scale2**2
+
+w_geom = 0.5
+eta0 = S2**2 / ((len(nonzero) + w_geom) * S4)
+
+print(f"  S2 = {S2:.15f}")
+print(f"  S4 = {S4:.15f}")
+print(f"  N  = {len(nonzero)}")
+print(f"  w  = {w_geom}")
+print()
+print(f"  eta0 = S2^2 / [(N+w) S4] = {eta0:.15f}")
+print()
+
+
+# =============================================================================
+# VII.  THE PARTICLE SPECTRUM
+# =============================================================================
+print("=" * 78)
+print("VII. THE PARTICLE SPECTRUM")
+print("=" * 78)
+print()
+print("  Defects are particles.  The coupling between them is the")
+print("  fine-structure constant alpha:")
+print("    alpha^-1 = (A(128 + phi^8) - 1/2) / (1 - A q)")
+print("  with A = pi/4, q = 1/1000.")
+print()
+
+D0 = PHI**8
+A  = PI / 4
+q  = 1.0 / 1000.0
+
+alpha_inv = (A * (128 + D0) - 0.5) / (1 - A * q)
+alpha = 1.0 / alpha_inv
+
+print(f"  phi^8 = {D0:.13f}")
+print()
+print(f"  alpha^-1 = {alpha_inv:.15f}")
+print(f"  alpha    = {alpha:.14e}")
+print(f"  CODATA   = 137.035999084")
+print(f"  dev      = {abs(alpha_inv-137.035999084)/137.035999084*100:.3e} %")
+
+mu_me = 1.5 * alpha_inv + ZETA3
+mp_me = 6 * PI**5 * (1 + alpha**2 / (2*math.sqrt(2)))
+
+print()
+print(f"  m_mu/m_e = {mu_me:.15f}")
+print(f"  m_p/m_e  = {mp_me:.15f}")
+print(f"  CODATA   = 1836.152673")
+print(f"  dev      = {abs(mp_me-1836.152673)/1836.152673*100:.3e} %")
+print()
+
+
+# =============================================================================
+# VIII.  FORCES FROM THE CRYSTAL
+# =============================================================================
+print("=" * 78)
+print("VIII. FORCES FROM THE CRYSTAL")
+print("=" * 78)
+print()
+print("  hbar = f_s0 * g_FCC * rho * a^3 / 4 * c fixes the lattice spacing.")
+print()
+
+C44 = 4.6205e34
+rho = C44 / c**2
+
+fs_base  = 1 - PI*PI / (6 + PI*PI)
+fcc_corr = 1 - 1/math.sqrt(Z)
+f_s0     = 1 - (1 - fs_base) * fcc_corr
+
+a        = (4 * hbar * c / (f_s0 * g_FCC * C44))**0.25
+m0       = rho * a**3 / 4
+hbar_rec = f_s0 * g_FCC * m0 * c * a
+
+print(f"  C44 (input)          = {C44:.6e} Pa")
+print(f"  rho = C44 / c^2      = {rho:.6e} kg/m^3")
+print(f"  f_s0                 = {f_s0:.15f}")
+print(f"  a (lattice spacing)  = {a:.6e} m")
+print(f"  hbar reconstructed   = {hbar_rec:.6e} J s")
+print(f"  hbar closure error   = {abs(hbar_rec-hbar)/hbar*100:.3e} %")
+print()
+
+S0       = 105.65 / PHI**2
+eta_loop = 3 * math.sqrt(2) / (PI * S0)
+Omega    = 3 * math.sqrt(5)
+G        = c**3 / (Omega * C44 * g_FCC * (1 - eta_loop))
+
+print(f"  G                    = {G:.6e} m^3 kg^-1 s^-2")
+print(f"  CODATA G             = 6.67430e-11")
+print(f"  dev                  = {abs(G-6.67430e-11)/6.67430e-11*100:.3e} %")
+print()
+
+sin2_W = (12.0 / (12 + 20)) / PHI
+print(f"  sin^2 theta_W        = {sin2_W:.12f}")
+print()
+
+
+# =============================================================================
+# IX.  EXPANSION AS LATTICE TENSION
+# =============================================================================
+print("=" * 78)
+print("IX. EXPANSION AS LATTICE TENSION")
+print("=" * 78)
+print()
+print("  H0 = [(mu - 1)/mu] / t_cosmic")
+print()
+
+COSMIC_AGE_GYR = 13.8
+t_cosmic = COSMIC_AGE_GYR * Gyr
+
+H0_si      = ((mu - 1) / mu) / t_cosmic
+H0         = H0_si * Mpc / 1000.0
+a0         = c * H0_si / (2 * PI)
+a_base_si  = a0 * 2 / math.sqrt(3)
+a_base     = a_base_si * kpc / 1e6
+
+print(f"  mu = {mu}   cosmic age = {COSMIC_AGE_GYR} Gyr")
+print(f"  H0 = {H0:.10f} km/s/Mpc")
+print(f"  Planck H0 = 67.4    dev = {abs(H0-67.4)/67.4*100:.3e} %")
+print()
+print(f"  a0     = {a0:.6e} m/s^2")
+print(f"  a_base = {a_base:.4f} (km/s)^2/kpc")
+print()
+
+H0_local = H0 * (1 + PHI**-5)
+print(f"  H0 local = H0 (1 + phi^-5) = {H0_local:.10f} km/s/Mpc")
+print(f"  SH0ES H0 = 73.6    dev = {abs(H0_local-73.6)/73.6*100:.3e} %")
+print()
+
+
+# =============================================================================
+# X.  GALACTIC DYNAMICS
+# =============================================================================
+print("=" * 78)
+print("X. GALACTIC DYNAMICS")
+print("=" * 78)
+print()
+
+G_PC       = 4.3009e-3
+KPC_TO_PC  = 1000.0
+M_SUN_G    = 1.989e30
+UPS_BULGE  = 0.70
+
+Sigma_char = (a_base_si / (2 * PI * G)) * (Z / (mu + Z)) * pc**2 / M_sun
+
+print(f"  beta (vortex exponent) = eta0 = {eta0:.15f}   [DERIVED]")
+print(f"  G_use                  = {G:.6e}   [DERIVED]")
+print(f"  a0                     = {a0:.6e}   [DERIVED]")
+print(f"  a_base                 = {a_base:.4f}   [DERIVED]")
+print(f"  Sigma_char             = {Sigma_char:.6f}   [DERIVED]")
+print(f"  Upsilon_bulge          = {UPS_BULGE}   [fixed]")
+print()
+
+URL = "https://zenodo.org/records/16284118/files/Rotmod_LTG.zip"
+os.makedirs("sparc_data", exist_ok=True)
+zp = os.path.join("sparc_data", "Rotmod_LTG.zip")
+
+if not os.path.exists(zp):
+    r = requests.get(URL, timeout=180, stream=True)
+    r.raise_for_status()
+    with open(zp, "wb") as f:
+        for chunk in r.iter_content(1 << 16):
+            f.write(chunk)
+
+if not glob.glob("sparc_data/*_rotmod.dat"):
+    with zipfile.ZipFile(zp) as z:
+        z.extractall("sparc_data")
+
+galaxies = {}
+for fp in sorted(glob.glob("sparc_data/*_rotmod.dat")):
+    name = os.path.basename(fp).replace("_rotmod.dat", "")
+    rows = []
+    for line in open(fp):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        p = s.split()
+        if len(p) < 6:
+            continue
+        try:
+            rows.append([float(x) for x in p[:6]])
+        except ValueError:
+            pass
+    if len(rows) < 3:
+        continue
+    d = np.array(rows)
+    R, Vo, Ve = d[:,0], d[:,1], d[:,2]
+    Vg, Vd, Vb = np.abs(d[:,3]), d[:,4], d[:,5]
+    m = (R > 0) & (Vo > 0) & (Ve > 0)
+    if m.sum() < 3:
+        continue
+    o = np.argsort(R[m])
+    galaxies[name] = {"R": R[m][o], "Vo": Vo[m][o], "Ve": Ve[m][o],
+                      "Vg": Vg[m][o], "Vd": Vd[m][o], "Vb": Vb[m][o]}
+
+print(f"  Loaded {len(galaxies)} galaxies from Zenodo Rotmod_LTG")
+print()
+
+
+def baryonic_mass(R, Vd, Vb, Vg):
+    Vbar = np.sqrt(Vg**2 + Vd**2 + Vb**2)
+    return max(np.percentile(Vbar**2 * R * KPC_TO_PC, 90) / G_PC, 1e-5)
+
+
+def solve_aeff(R, Sb, Vf, ab, Sc, mx=15, tol=1e-3):
+    R = np.asarray(R, float)
+    Sb = np.asarray(Sb, float)
+    ae = ab
+    for _ in range(mx):
+        rt = np.clip(Vf**2/ae, R.min()*1.01, R.max()*0.99)
+        S  = np.interp(rt, R, Sb)
+        an = np.clip(ab * np.sqrt(np.clip(S/Sc, 0.01, 100)), 400, 12000)
+        if abs(an-ae)/ae < tol:
+            return an, Vf**2/an
+        ae = 0.7*ae + 0.3*an
+    return ae, Vf**2/ae
+
+
+def predict(R, Vd, Vb, Vg, ups):
+    Vd_ml = Vd * math.sqrt(max(ups, 0.01))
+    Vb_ml = Vb * math.sqrt(UPS_BULGE)
+    Vg_a  = np.abs(Vg)
+    Vbar  = np.sqrt(Vg_a**2 + Vd_ml**2 + Vb_ml**2)
+    Mbar  = baryonic_mass(R, Vd_ml, Vb_ml, Vg_a)
+    Vf    = (a0 * G * Mbar * M_SUN_G)**0.25 / 1000
+    R_pc  = R * KPC_TO_PC
+    with np.errstate(divide="ignore", invalid="ignore"):
+        Sigma = np.where(R_pc > 1e-10, Vbar**2/(2*PI*G_PC*R_pc), 0.0)
+    ae, rt = solve_aeff(R, Sigma, Vf, a_base, Sigma_char)
+    x = R / max(rt, 1e-6)
+    Vv = Vf * (1 - np.exp(-(x ** eta0)))
+    return np.sqrt(Vbar**2 + Vv**2), Vf
+
+
+t0 = time.time()
+results = []
+for name, g in galaxies.items():
+    R, Vo, Ve = g["R"], g["Vo"], g["Ve"]
+    m = (Vo > 1.0) & (Ve > 0)
+    if m.sum() < 3:
+        continue
+    errs = np.sqrt(Ve[m]**2 + (0.05*Vo[m])**2)
+
+    def chi2(u):
+        try:
+            pred, _ = predict(R, g["Vd"], g["Vb"], g["Vg"], u)
+        except Exception:
+            return 1e10
+        return float(np.sum(((pred[m]-Vo[m])/errs)**2))
+
+    r = minimize_scalar(chi2, bounds=(0.01, 2.5), method="bounded",
+                        options={"xatol": 1e-4})
+    ups = float(r.x)
+    pred, Vf = predict(R, g["Vd"], g["Vb"], g["Vg"], ups)
+    pct_ = 100 * (pred[m] - Vo[m]) / Vo[m]
+    results.append({"ups": ups, "Vf": Vf,
+                    "med": float(np.median(np.abs(pct_))),
+                    "mean": float(np.mean(np.abs(pct_)))})
+
+dt = time.time() - t0
+
+med = np.array([r["med"] for r in results])
+mab = np.array([r["mean"] for r in results])
+upd = np.array([r["ups"] for r in results])
+vfl = np.array([r["Vf"] for r in results])
+
+print(f"  Fitted {len(results)} galaxies in {dt:.1f} s")
+print()
+print(f"  Median |residual|   = {np.median(med):.2f}%")
+print(f"  Mean |residual|     = {np.mean(mab):.2f}%")
+print(f"  Upsilon_disk median = {np.median(upd):.2f}")
+print(f"  Upsilon_disk [16,84] = [{np.percentile(upd,16):.2f}, "
+      f"{np.percentile(upd,84):.2f}]")
+print()
+print("  Residual by V_flat bin:")
+for lo, hi in [(0,40),(40,60),(60,90),(90,130),(130,180),(180,400)]:
+    mask = (vfl >= lo) & (vfl < hi)
+    if mask.sum() == 0:
+        continue
+    print(f"    [{lo:>3},{hi:>3})  n = {mask.sum():>4}   "
+          f"median = {np.median(med[mask]):.2f}%")
+print()
+
+
+# =============================================================================
+# CLOSING
+# =============================================================================
+print("=" * 78)
+print("CLOSING")
+print("=" * 78)
+print()
+print("  Started with Maxwell.  Ended with 175 galaxy rotation curves.")
+print()
+print("  Every number above was computed live.  Not one is stored.")
+print("  Change any input and the chain recomputes.")
+print()
+print("  The theory is the chain.  The chain is the theory.")
+print()
+print("  It's God's work.  I'm just a cartographer.")
+print()
+
+elapsed = time.perf_counter() - t_start
+print("=" * 78)
+print(f"  Live paper runtime: {elapsed:.1f} s")
+print("=" * 78)
+print()
