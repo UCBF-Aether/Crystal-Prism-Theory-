@@ -1,0 +1,786 @@
+import numpy as np
+
+# ============================================================
+# CRYSTAL PRISM QUANTUM RELATIVITY
+# FCC ELECTROMAGNETIC DERIVATION V5.4.3
+# Pydroid 3 clean executable
+# ============================================================
+
+np.set_printoptions(precision=12, suppress=False)
+
+# ============================================================
+# INPUTS
+# ============================================================
+
+eps0 = 8.8541878128e-12
+mu0 = 1.25663706212e-6
+c = 1.0 / np.sqrt(eps0 * mu0)
+
+a = 1.0
+sqrt2 = np.sqrt(2.0)
+
+print("=" * 70)
+print("CRYSTAL PRISM QUANTUM RELATIVITY")
+print("FCC ELECTROMAGNETIC DERIVATION V5.4.3")
+print("=" * 70)
+
+print()
+print("[INPUT]")
+print("epsilon_0 =", eps0)
+print("mu_0      =", mu0)
+print("c         =", c)
+print("a         =", a)
+
+# ============================================================
+# FCC BONDS
+# ============================================================
+
+bonds = []
+
+for sx in [-1, 1]:
+    for sy in [-1, 1]:
+        bonds.append(np.array([sx, sy, 0.0]) * a / sqrt2)
+
+for sx in [-1, 1]:
+    for sz in [-1, 1]:
+        bonds.append(np.array([sx, 0.0, sz]) * a / sqrt2)
+
+for sy in [-1, 1]:
+    for sz in [-1, 1]:
+        bonds.append(np.array([0.0, sy, sz]) * a / sqrt2)
+
+bonds = np.array(bonds)
+
+bond_lengths = np.linalg.norm(bonds, axis=1)
+
+bond_error = np.max(
+    np.abs(bond_lengths - a)
+)
+
+geometry_pass = (
+    len(bonds) == 12
+    and bond_error < 1e-14
+)
+
+print()
+print("[GEOMETRIC] FCC geometry")
+print("bond count =", len(bonds))
+print("bond length / a =", np.mean(bond_lengths) / a)
+print("bond error =", bond_error)
+print("STATUS =", "PASS" if geometry_pass else "FAIL")
+
+# ============================================================
+# SECOND MOMENT
+# ============================================================
+
+M2 = np.zeros((3, 3))
+
+for d in bonds:
+    M2 += np.outer(d, d)
+
+M2_target = 4.0 * a * a * np.eye(3)
+
+M2_error = np.max(
+    np.abs(M2 - M2_target)
+)
+
+second_moment_pass = M2_error < 1e-12
+
+print()
+print("[GEOMETRIC] FCC second moment")
+print(M2)
+print("target:")
+print(M2_target)
+print("error =", M2_error)
+print("STATUS =", "PASS" if second_moment_pass else "FAIL")
+
+# ============================================================
+# PERIODIC FCC DERIVATIVE MATRICES
+# ============================================================
+
+L = 6
+N = L ** 3
+
+def index(x, y, z):
+    return (
+        ((x % L) * L + (y % L)) * L
+        + (z % L)
+    )
+
+Dx = np.zeros((N, N))
+Dy = np.zeros((N, N))
+Dz = np.zeros((N, N))
+
+for x in range(L):
+    for y in range(L):
+        for z in range(L):
+
+            row = index(x, y, z)
+
+            for d in bonds:
+
+                ix = int(round(d[0] * sqrt2 / a))
+                iy = int(round(d[1] * sqrt2 / a))
+                iz = int(round(d[2] * sqrt2 / a))
+
+                col = index(
+                    x + ix,
+                    y + iy,
+                    z + iz
+                )
+
+                Dx[row, col] += d[0] / (4.0 * a * a)
+                Dy[row, col] += d[1] / (4.0 * a * a)
+                Dz[row, col] += d[2] / (4.0 * a * a)
+
+# ============================================================
+# OPERATOR TESTS
+# ============================================================
+
+skew_error = max(
+    np.max(np.abs(Dx.T + Dx)),
+    np.max(np.abs(Dy.T + Dy)),
+    np.max(np.abs(Dz.T + Dz))
+)
+
+comm_xy = Dx @ Dy - Dy @ Dx
+comm_yz = Dy @ Dz - Dz @ Dy
+comm_zx = Dz @ Dx - Dx @ Dz
+
+comm_error = max(
+    np.max(np.abs(comm_xy)),
+    np.max(np.abs(comm_yz)),
+    np.max(np.abs(comm_zx))
+)
+
+skew_pass = skew_error < 1e-12
+comm_pass = comm_error < 1e-12
+
+print()
+print("[DERIVED] FCC operators")
+print("skew error =", skew_error)
+print("commutator error =", comm_error)
+print("skew STATUS =", "PASS" if skew_pass else "FAIL")
+print("commute STATUS =", "PASS" if comm_pass else "FAIL")
+
+# ============================================================
+# VECTOR CALCULUS
+# ============================================================
+
+def gradient(phi):
+    return np.array([
+        Dx @ phi,
+        Dy @ phi,
+        Dz @ phi
+    ])
+
+def divergence(V):
+    return (
+        Dx @ V[0]
+        + Dy @ V[1]
+        + Dz @ V[2]
+    )
+
+def curl(V):
+    return np.array([
+        Dy @ V[2] - Dz @ V[1],
+        Dz @ V[0] - Dx @ V[2],
+        Dx @ V[1] - Dy @ V[0]
+    ])
+
+# ============================================================
+# TEST FIELDS
+# ============================================================
+
+rng = np.random.default_rng(12345)
+
+phi = rng.normal(size=N)
+
+A = rng.normal(size=(3, N))
+
+A_dot = rng.normal(size=(3, N))
+
+E = -gradient(phi) - A_dot
+
+B = curl(A)
+
+E_dot = rng.normal(size=(3, N))
+
+rho_off = rng.normal(size=N)
+
+J_off = rng.normal(size=(3, N))
+
+# ============================================================
+# ACTION
+# ============================================================
+
+def action(phi, A, A_dot, rho, J):
+
+    E_local = -gradient(phi) - A_dot
+    B_local = curl(A)
+
+    field = (
+        eps0 * np.sum(E_local ** 2) / 2.0
+        - np.sum(B_local ** 2) / (2.0 * mu0)
+    )
+
+    source = (
+        -np.sum(rho * phi)
+        + np.sum(J * A)
+    )
+
+    return field + source
+
+L_field = (
+    eps0 * np.sum(E ** 2) / 2.0
+    - np.sum(B ** 2) / (2.0 * mu0)
+)
+
+L_source = (
+    -np.sum(rho_off * phi)
+    + np.sum(J_off * A)
+)
+
+print()
+print("[DERIVED] Maxwell action")
+print("L_field  =", L_field)
+print("L_source =", L_source)
+print("L_total  =", L_field + L_source)
+
+# ============================================================
+# OFF-SHELL EULER-LAGRANGE RESIDUALS
+# ============================================================
+
+phi_EL = (
+    eps0 * divergence(E)
+    - rho_off
+)
+
+A_EL = (
+    curl(B) / mu0
+    - eps0 * E_dot
+    + J_off
+)
+
+print()
+print("[CHECK] Off-shell Euler-Lagrange")
+print("phi residual =", np.max(np.abs(phi_EL)))
+print("A residual   =", np.max(np.abs(A_EL)))
+
+# ============================================================
+# ON-SHELL MAXWELL CLOSURE
+# ============================================================
+
+rho = eps0 * divergence(E)
+
+J = (
+    curl(B) / mu0
+    - eps0 * E_dot
+)
+
+gauss_residual = (
+    eps0 * divergence(E)
+    - rho
+)
+
+ampere_residual = (
+    curl(B) / mu0
+    - eps0 * E_dot
+    - J
+)
+
+gauss_error = np.max(
+    np.abs(gauss_residual)
+)
+
+ampere_error = np.max(
+    np.abs(ampere_residual)
+)
+
+gauss_pass = gauss_error < 1e-12
+ampere_pass = ampere_error < 1e-12
+
+print()
+print("[CLOSURE] Maxwell equations")
+print("Gauss residual  =", gauss_error)
+print("Ampere residual =", ampere_error)
+print("Gauss STATUS  =", "PASS" if gauss_pass else "FAIL")
+print("Ampere STATUS =", "PASS" if ampere_pass else "FAIL")
+
+# ============================================================
+# HOMOGENEOUS MAXWELL IDENTITIES
+# ============================================================
+
+divB = divergence(B)
+
+B_dot = curl(A_dot)
+
+faraday_residual = curl(E) + B_dot
+
+divB_error = np.max(
+    np.abs(divB)
+)
+
+faraday_error = np.max(
+    np.abs(faraday_residual)
+)
+
+divB_pass = divB_error < 1e-12
+faraday_pass = faraday_error < 1e-12
+
+print()
+print("[CLOSURE] Homogeneous equations")
+print("div B residual =", divB_error)
+print("Faraday residual =", faraday_error)
+print("div B STATUS =", "PASS" if divB_pass else "FAIL")
+print("Faraday STATUS =", "PASS" if faraday_pass else "FAIL")
+
+# ============================================================
+# EXACT FCC FOURIER SYMBOL
+# ============================================================
+
+def fcc_symbol(kvec):
+
+    kx, ky, kz = kvec
+
+    qx = kx * a / sqrt2
+    qy = ky * a / sqrt2
+    qz = kz * a / sqrt2
+
+    Dx_k = (
+        sqrt2 / (2.0 * a)
+        * np.sin(qx)
+        * (np.cos(qy) + np.cos(qz))
+    )
+
+    Dy_k = (
+        sqrt2 / (2.0 * a)
+        * np.sin(qy)
+        * (np.cos(qx) + np.cos(qz))
+    )
+
+    Dz_k = (
+        sqrt2 / (2.0 * a)
+        * np.sin(qz)
+        * (np.cos(qx) + np.cos(qy))
+    )
+
+    return np.array([
+        Dx_k,
+        Dy_k,
+        Dz_k
+    ])
+
+print()
+print("[GEOMETRIC] Exact FCC Fourier symbol")
+print("q_i = k_i * a / sqrt(2)")
+print("D_x = sqrt(2)/(2a) sin(q_x)")
+print("      [cos(q_y) + cos(q_z)]")
+print("D_y = sqrt(2)/(2a) sin(q_y)")
+print("      [cos(q_x) + cos(q_z)]")
+print("D_z = sqrt(2)/(2a) sin(q_z)")
+print("      [cos(q_x) + cos(q_y)]")
+
+# ============================================================
+# SMALL-K NORMALIZATION
+# ============================================================
+
+print()
+print("[CHECK] SMALL-K NORMALIZATION")
+print("Expected: |D| / |k| -> 1")
+
+normalization_pass = True
+
+direction = np.array([
+    2.0,
+    1.0,
+    3.0
+])
+
+direction /= np.linalg.norm(direction)
+
+for ka in [
+    1e-1,
+    1e-2,
+    1e-3,
+    1e-4,
+    1e-5,
+    1e-6
+]:
+
+    kvec = (
+        ka / a
+    ) * direction
+
+    Dvec = fcc_symbol(kvec)
+
+    ratio = (
+        np.linalg.norm(Dvec)
+        / np.linalg.norm(kvec)
+    )
+
+    error = abs(ratio - 1.0)
+
+    print(
+        "ka =",
+        ka,
+        " |D|/|k| =",
+        ratio,
+        " error =",
+        error
+    )
+
+    if ka <= 1e-4 and error > 1e-8:
+        normalization_pass = False
+
+print(
+    "STATUS =",
+    "PASS" if normalization_pass else "FAIL"
+)
+
+# ============================================================
+# FCC -> CONTINUUM
+# ============================================================
+
+directions = [
+    np.array([1.0, 0.0, 0.0]),
+    np.array([1.0, 1.0, 0.0]),
+    np.array([1.0, 1.0, 1.0]),
+    np.array([2.0, 1.0, 3.0]),
+    np.array([-1.0, 2.0, 4.0])
+]
+
+directions = [
+    d / np.linalg.norm(d)
+    for d in directions
+]
+
+ka_values = [
+    1.0,
+    0.5,
+    0.25,
+    0.125,
+    0.0625,
+    0.03125,
+    0.015625,
+    0.0078125
+]
+
+errors = []
+
+print()
+print("[CHECK] FCC TO CONTINUUM")
+
+for ka in ka_values:
+
+    max_error = 0.0
+
+    for direction in directions:
+
+        # IMPORTANT:
+        # ka = |k| * a
+        #
+        # FCC phase:
+        # q = k * a / sqrt(2)
+        #
+        # Therefore:
+        # q = ka * direction / sqrt(2)
+
+        q = (
+            ka / sqrt2
+        ) * direction
+
+        # Physical k:
+
+        kvec = (
+            ka / a
+        ) * direction
+
+        # Exact FCC operator:
+
+        Dvec = fcc_symbol(kvec)
+
+        error = (
+            np.linalg.norm(Dvec - kvec)
+            / np.linalg.norm(kvec)
+        )
+
+        max_error = max(
+            max_error,
+            error
+        )
+
+    errors.append(max_error)
+
+    print(
+        "ka =",
+        ka,
+        " max relative |D-k| error =",
+        max_error
+    )
+
+# ============================================================
+# CONVERGENCE EXPONENT
+# ============================================================
+
+logx = np.log(
+    np.array(ka_values[-5:])
+)
+
+logy = np.log(
+    np.array(errors[-5:])
+)
+
+slope, intercept = np.polyfit(
+    logx,
+    logy,
+    1
+)
+
+continuum_pass = (
+    slope > 1.5
+    and errors[-1] < 1e-4
+)
+
+print()
+print("[CHECK] CONTINUUM CONVERGENCE")
+print("asymptotic exponent =", slope)
+print(
+    "STATUS =",
+    "PASS" if continuum_pass else "FAIL"
+)
+
+# ============================================================
+# DISPERSION
+# ============================================================
+
+print()
+print("[CHECK] ELECTROMAGNETIC DISPERSION")
+print("Expected: v/c -> 1")
+
+dispersion_pass = True
+
+for ka in [
+    0.25,
+    0.125,
+    0.0625,
+    0.03125,
+    0.015625
+]:
+
+    velocities = []
+
+    for direction in directions:
+
+        kvec = (
+            ka / a
+        ) * direction
+
+        Dvec = fcc_symbol(kvec)
+
+        ratio = (
+            np.linalg.norm(Dvec)
+            / np.linalg.norm(kvec)
+        )
+
+        velocities.append(ratio)
+
+    vmin = min(velocities)
+    vmax = max(velocities)
+
+    spread = (
+        (vmax - vmin)
+        / ((vmax + vmin) / 2.0)
+        * 100.0
+    )
+
+    print(
+        "ka =",
+        ka,
+        " vmin/c =",
+        vmin,
+        " vmax/c =",
+        vmax,
+        " anisotropy =",
+        spread,
+        "%"
+    )
+
+    if ka <= 0.03125:
+
+        if (
+            abs(vmin - 1.0) > 1e-3
+            or abs(vmax - 1.0) > 1e-3
+        ):
+            dispersion_pass = False
+
+print(
+    "STATUS =",
+    "PASS" if dispersion_pass else "FAIL"
+)
+
+# ============================================================
+# LONG-WAVELENGTH LIMIT
+# ============================================================
+
+ka_small = 1e-7
+
+kvec = (
+    ka_small / a
+) * direction
+
+Dvec = fcc_symbol(kvec)
+
+small_k_ratio = (
+    np.linalg.norm(Dvec)
+    / np.linalg.norm(kvec)
+)
+
+longwave_error = abs(
+    small_k_ratio - 1.0
+)
+
+longwave_pass = (
+    longwave_error < 1e-10
+)
+
+print()
+print("[CLOSURE] LONG-WAVELENGTH LIMIT")
+print("ka =", ka_small)
+print("|D|/|k| =", small_k_ratio)
+print("error =", longwave_error)
+print(
+    "STATUS =",
+    "PASS" if longwave_pass else "FAIL"
+)
+
+# ============================================================
+# TRANSVERSE CURL-CURL
+# ============================================================
+
+print()
+print("[CHECK] TRANSVERSE CURL-CURL")
+
+wave_vectors = [
+    np.array([1.0, 0.0, 0.0]),
+    np.array([1.0, 1.0, 0.0]),
+    np.array([1.0, 1.0, 1.0]),
+    np.array([2.0, 1.0, 3.0])
+]
+
+transverse_pass = True
+
+for d in wave_vectors:
+
+    d = d / np.linalg.norm(d)
+
+    D = fcc_symbol(
+        0.2 * d / a
+    )
+
+    trial = np.array([
+        0.37,
+        -0.51,
+        0.83
+    ])
+
+    D2 = np.dot(D, D)
+
+    Atrial = (
+        trial
+        - D
+        * np.dot(D, trial)
+        / D2
+    )
+
+    transverse_error = abs(
+        np.dot(D, Atrial)
+    )
+
+    lhs = np.cross(
+        D,
+        np.cross(D, Atrial)
+    )
+
+    rhs = (
+        -D2 * Atrial
+    )
+
+    operator_error = np.linalg.norm(
+        lhs - rhs
+    )
+
+    print(
+        "direction =",
+        d,
+        " |D dot A| =",
+        transverse_error,
+        " operator error =",
+        operator_error
+    )
+
+    if (
+        transverse_error > 1e-12
+        or operator_error > 1e-12
+    ):
+        transverse_pass = False
+
+print(
+    "STATUS =",
+    "PASS" if transverse_pass else "FAIL"
+)
+
+# ============================================================
+# FINAL CERTIFICATE
+# ============================================================
+
+checks = [
+    ("FCC geometry", geometry_pass),
+    ("FCC second moment", second_moment_pass),
+    ("Skew-adjoint derivative", skew_pass),
+    ("Derivative commutation", comm_pass),
+    ("Gauss closure", gauss_pass),
+    ("Ampere closure", ampere_pass),
+    ("D dot B = 0", divB_pass),
+    ("Faraday identity", faraday_pass),
+    ("Small-k normalization", normalization_pass),
+    ("FCC to continuum", continuum_pass),
+    ("Dispersion", dispersion_pass),
+    ("Long-wavelength c limit", longwave_pass),
+    ("Transverse curl-curl", transverse_pass)
+]
+
+passed = sum(
+    1
+    for name, status in checks
+    if status
+)
+
+failed = len(checks) - passed
+
+print()
+print("=" * 70)
+print("FINAL CERTIFICATE")
+print("=" * 70)
+
+for name, status in checks:
+
+    print(
+        "[{}] {}".format(
+            "PASS" if status else "FAIL",
+            name
+        )
+    )
+
+print()
+print("TOTAL PASS =", passed)
+print("TOTAL FAIL =", failed)
+
+print()
+
+if failed == 0:
+    print("ALL TESTS PASS")
+else:
+    print("OPEN TESTS REMAIN")
+
+print("=" * 70)
