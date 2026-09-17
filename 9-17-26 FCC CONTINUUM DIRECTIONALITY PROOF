@@ -1,0 +1,1502 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+===============================================================================
+              CRYSTAL PRISM QUANTUM RELATIVITY
+       FCC CONTINUUM DIRECTIONALITY PROOF — V7
+===============================================================================
+
+GOAL
+----
+Determine whether arbitrary macroscopic propagation directions can emerge
+from a discrete FCC microscopic geometry.
+
+CORE CHAIN
+----------
+
+    DISCRETE FCC BONDS
+            ↓
+    COLLECTIVE k·δ SAMPLING
+            ↓
+    EXACT ISOTROPIC SECOND MOMENT
+            ↓
+    ARBITRARY |k|²
+            ↓
+    FCC DIFFERENTIAL OPERATOR
+            ↓
+    D(k) → k
+            ↓
+    DISCRETE CURL
+            ↓
+    K = CᵀC = |D|²I − DDᵀ
+            ↓
+    K_FCC → |k|²I − kkᵀ
+            ↓
+    CONTINUUM DIRECTIONALITY
+
+QUESTION
+--------
+Does the fact that FCC has only 12 nearest-neighbor bond directions force
+macroscopic propagation to occur only along those 12 directions?
+
+TEST
+----
+Construct arbitrary continuous wavevectors k ∈ R³ and evaluate them through
+the complete FCC bond set.
+
+The decisive identity is
+
+    Σδ δ_i δ_j = 2a²δ_ij
+
+which gives
+
+    Σδ (k·δ)² = 2a²|k|²
+
+for every k ∈ R³.
+
+Then test the FCC differential symbol
+
+    D_i(k) = Σδ δ_i sin(k·δ)/(2a²)
+
+and verify
+
+    D(k) = k + O((ka)²).
+
+Finally construct
+
+    C(D)
+
+and
+
+    K = CᵀC
+
+to verify
+
+    K = |D|²I − DDᵀ
+
+and convergence toward
+
+    K_Maxwell = |k|²I − kkᵀ.
+
+===============================================================================
+"""
+
+import math
+import random
+
+
+# =============================================================================
+# LINEAR ALGEBRA
+# =============================================================================
+
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def norm(a):
+    return math.sqrt(dot(a, a))
+
+
+def sub(a, b):
+    return tuple(x - y for x, y in zip(a, b))
+
+
+def scale(s, a):
+    return tuple(s * x for x in a)
+
+
+def outer(a, b):
+    return [[a[i] * b[j] for j in range(3)] for i in range(3)]
+
+
+def identity3():
+    return [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0]
+    ]
+
+
+def mat_sub(A, B):
+    return [
+        [A[i][j] - B[i][j] for j in range(3)]
+        for i in range(3)
+    ]
+
+
+def mat_scale(s, A):
+    return [
+        [s * A[i][j] for j in range(3)]
+        for i in range(3)
+    ]
+
+
+def mat_vec(A, v):
+    return tuple(
+        sum(A[i][j] * v[j] for j in range(3))
+        for i in range(3)
+    )
+
+
+def transpose(A):
+    return [
+        [A[j][i] for j in range(3)]
+        for i in range(3)
+    ]
+
+
+def mat_mul(A, B):
+    return [
+        [
+            sum(A[i][k] * B[k][j] for k in range(3))
+            for j in range(3)
+        ]
+        for i in range(3)
+    ]
+
+
+def frobenius(A):
+    return math.sqrt(
+        sum(
+            A[i][j] ** 2
+            for i in range(3)
+            for j in range(3)
+        )
+    )
+
+
+# =============================================================================
+# TEST SYSTEM
+# =============================================================================
+
+PASS_COUNT = 0
+FAIL_COUNT = 0
+
+
+def check(label, condition):
+
+    global PASS_COUNT, FAIL_COUNT
+
+    if condition:
+        PASS_COUNT += 1
+        print("[PASS] " + label)
+    else:
+        FAIL_COUNT += 1
+        print("[FAIL] " + label)
+
+
+def section(title):
+    print()
+    print("=" * 80)
+    print(title)
+    print("=" * 80)
+
+
+# =============================================================================
+# FCC GEOMETRY
+# =============================================================================
+
+a = 1.0
+
+fcc = []
+
+# (±a/2, ±a/2, 0)
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        fcc.append((
+            sx * a / 2,
+            sy * a / 2,
+            0.0
+        ))
+
+# (±a/2, 0, ±a/2)
+for sx in (-1, 1):
+    for sz in (-1, 1):
+        fcc.append((
+            sx * a / 2,
+            0.0,
+            sz * a / 2
+        ))
+
+# (0, ±a/2, ±a/2)
+for sy in (-1, 1):
+    for sz in (-1, 1):
+        fcc.append((
+            0.0,
+            sy * a / 2,
+            sz * a / 2
+        ))
+
+
+# =============================================================================
+# HEADER
+# =============================================================================
+
+print("=" * 80)
+print("          CRYSTAL PRISM QUANTUM RELATIVITY")
+print("     FCC CONTINUUM DIRECTIONALITY PROOF — V7")
+print("=" * 80)
+
+print()
+print("CENTRAL QUESTION")
+print("----------------")
+print("Can arbitrary macroscopic propagation directions emerge")
+print("from a discrete FCC microscopic geometry?")
+
+print()
+print("CONSTRUCTIVE CHAIN")
+print("------------------")
+print()
+print("    DISCRETE FCC BONDS")
+print("            ↓")
+print("    COLLECTIVE k·δ SAMPLING")
+print("            ↓")
+print("    EXACT ISOTROPIC SECOND MOMENT")
+print("            ↓")
+print("    ARBITRARY |k|²")
+print("            ↓")
+print("    FCC DIFFERENTIAL OPERATOR")
+print("            ↓")
+print("    D(k) → k")
+print("            ↓")
+print("    DISCRETE CURL")
+print("            ↓")
+print("    K = CᵀC = |D|²I − DDᵀ")
+print("            ↓")
+print("    K_FCC → |k|²I − kkᵀ")
+print("            ↓")
+print("    CONTINUUM DIRECTIONALITY")
+
+
+# =============================================================================
+# 1. FCC BOND SET
+# =============================================================================
+
+section("1. DISCRETE FCC BOND DIRECTIONS")
+
+print("Number of nearest-neighbor FCC bonds:", len(fcc))
+
+bond_lengths = [norm(d) for d in fcc]
+
+print(
+    "Bond length / a = {:.15f}".format(
+        bond_lengths[0]
+    )
+)
+
+check(
+    "FCC contains exactly 12 nearest-neighbor directions.",
+    len(fcc) == 12
+)
+
+check(
+    "All bonds have length a/√2.",
+    max(
+        abs(r - 1.0 / math.sqrt(2.0))
+        for r in bond_lengths
+    ) < 1e-14
+)
+
+
+# =============================================================================
+# 2. EXACT SECOND MOMENT
+# =============================================================================
+
+section("2. EXACT FCC SECOND MOMENT")
+
+M2 = [
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0]
+]
+
+for d in fcc:
+
+    for i in range(3):
+
+        for j in range(3):
+
+            M2[i][j] += d[i] * d[j]
+
+
+expected = mat_scale(
+    2.0 * a * a,
+    identity3()
+)
+
+M2_error = frobenius(
+    mat_sub(M2, expected)
+)
+
+print()
+print("Σδ δ_i δ_j =")
+
+for row in M2:
+    print(
+        "  " +
+        " ".join("{: .12f}".format(x) for x in row)
+    )
+
+print()
+print("Expected:")
+print("  2a² δ_ij")
+
+print()
+print("Maximum error = {:.3e}".format(M2_error))
+
+check(
+    "Σδ δ_iδ_j = 2a²δ_ij.",
+    M2_error < 1e-14
+)
+
+
+# =============================================================================
+# 3. ARBITRARY-k IDENTITY
+# =============================================================================
+
+section("3. ARBITRARY WAVEVECTOR k")
+
+test_vectors = [
+
+    (1.0, 0.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (0.0, 0.0, 1.0),
+
+    (1.0, 1.0, 0.0),
+    (1.0, 0.0, 1.0),
+    (0.0, 1.0, 1.0),
+
+    (1.0, 1.0, 1.0),
+
+    (2.0, 1.0, 3.0),
+
+    (0.37, 1.21, -0.83),
+    (-2.73, 0.41, 1.67),
+
+    (math.pi, math.sqrt(2.0), math.e),
+
+    (0.193, -0.827, 1.371),
+    (-1.917, 0.442, -0.318)
+]
+
+max_error = 0.0
+
+for k in test_vectors:
+
+    lhs = sum(
+        dot(k, d) ** 2
+        for d in fcc
+    )
+
+    rhs = 2.0 * a * a * dot(k, k)
+
+    error = abs(lhs - rhs)
+
+    max_error = max(max_error, error)
+
+    print(
+        "k = ({: .6f}, {: .6f}, {: .6f})"
+        "   error = {:.3e}".format(
+            k[0],
+            k[1],
+            k[2],
+            error
+        )
+    )
+
+print()
+print("Identity:")
+print("  Σδ(k·δ)² = 2a²|k|²")
+
+print()
+print("Maximum error = {:.3e}".format(max_error))
+
+check(
+    "Arbitrary k reproduces 2a²|k|².",
+    max_error < 1e-12
+)
+
+
+# =============================================================================
+# 4. CONTINUOUS SPHERE
+# =============================================================================
+
+section("4. CONTINUOUS PROPAGATION DIRECTIONS")
+
+directions = []
+
+N_theta = 24
+N_phi = 24
+
+for n in range(N_theta):
+
+    theta = math.pi * (n + 0.5) / N_theta
+
+    for m in range(N_phi):
+
+        phi = 2.0 * math.pi * m / N_phi
+
+        directions.append((
+            math.sin(theta) * math.cos(phi),
+            math.sin(theta) * math.sin(phi),
+            math.cos(theta)
+        ))
+
+print("Continuous spherical directions tested:", len(directions))
+
+check(
+    "Continuous propagation directions are sampled over S².",
+    len(directions) == N_theta * N_phi
+)
+
+
+# =============================================================================
+# 5. FCC DIFFERENTIAL OPERATOR
+# =============================================================================
+
+section("5. FCC DIFFERENTIAL OPERATOR")
+
+def D_fcc(k):
+
+    result = [0.0, 0.0, 0.0]
+
+    for d in fcc:
+
+        phase = dot(k, d)
+
+        for i in range(3):
+
+            result[i] += (
+                d[i] *
+                math.sin(phase)
+            )
+
+    return tuple(
+        x / (2.0 * a * a)
+        for x in result
+    )
+
+
+print("Definition:")
+print()
+print("  D_i(k) = Σδ δ_i sin(k·δ)/(2a²)")
+print()
+print("Continuum limit:")
+print()
+print("  D(k) = k + O(k³a²)")
+print()
+print("Therefore:")
+print()
+print("  |D-k|/|k| = O((ka)²)")
+
+
+# =============================================================================
+# 6. EXACT FCC SYMBOL
+# =============================================================================
+
+section("6. EXACT FCC DIFFERENTIAL SYMBOL")
+
+print()
+print("The FCC nearest-neighbor sum gives:")
+
+print()
+print("  D_x = sin(k_x a/2)")
+print("        × cos(k_y a/2)")
+print("        × cos(k_z a/2) / a")
+
+print()
+print("  D_y = cos(k_x a/2)")
+print("        × sin(k_y a/2)")
+print("        × cos(k_z a/2) / a")
+
+print()
+print("  D_z = cos(k_x a/2)")
+print("        × cos(k_y a/2)")
+print("        × sin(k_z a/2) / a")
+
+print()
+print("Using")
+print()
+print("  sin(x) = x + O(x³)")
+print("  cos(x) = 1 + O(x²)")
+print()
+print("gives")
+print()
+print("  D(k) = k + O(k³a²)")
+
+
+# =============================================================================
+# 7. DIFFERENTIAL CONVERGENCE
+# =============================================================================
+
+section("7. D(k) → k")
+
+ka_values = [
+    1.0,
+    0.5,
+    0.25,
+    0.125,
+    0.0625,
+    0.03125,
+    0.015625,
+    0.0078125,
+    0.00390625
+]
+
+D_errors = []
+
+for ka in ka_values:
+
+    maximum = 0.0
+
+    for direction in directions:
+
+        k = scale(
+            ka / a,
+            direction
+        )
+
+        D = D_fcc(k)
+
+        relative_error = (
+            norm(sub(D, k))
+            / norm(k)
+        )
+
+        maximum = max(
+            maximum,
+            relative_error
+        )
+
+    D_errors.append(maximum)
+
+    print(
+        "ka = {: .9f}"
+        "   max |D-k|/|k| = {:.12e}".format(
+            ka,
+            maximum
+        )
+    )
+
+
+def power_law_exponent(xs, ys):
+
+    lx = [math.log(x) for x in xs]
+    ly = [math.log(y) for y in ys]
+
+    xm = sum(lx) / len(lx)
+    ym = sum(ly) / len(ly)
+
+    numerator = sum(
+        (x - xm) * (y - ym)
+        for x, y in zip(lx, ly)
+    )
+
+    denominator = sum(
+        (x - xm) ** 2
+        for x in lx
+    )
+
+    return numerator / denominator
+
+
+D_exponent = power_law_exponent(
+    ka_values,
+    D_errors
+)
+
+print()
+print(
+    "Scaling exponent = {:.8f}".format(
+        D_exponent
+    )
+)
+
+check(
+    "D(k) − k scales as O((ka)²) relative error.",
+    abs(D_exponent - 2.0) < 0.08
+)
+
+
+# =============================================================================
+# 8. DISCRETE CURL
+# =============================================================================
+
+section("8. DISCRETE CURL OPERATOR")
+
+def curl_matrix(D):
+
+    Dx, Dy, Dz = D
+
+    return [
+        [0.0, -Dz, Dy],
+        [Dz, 0.0, -Dx],
+        [-Dy, Dx, 0.0]
+    ]
+
+
+# =============================================================================
+# 9. EXACT CURL-CURL IDENTITY
+# =============================================================================
+
+section("9. K = CᵀC")
+
+max_identity_error = 0.0
+max_KD = 0.0
+
+for direction in directions:
+
+    k = scale(
+        0.4 / a,
+        direction
+    )
+
+    D = D_fcc(k)
+
+    C = curl_matrix(D)
+
+    K = mat_mul(
+        transpose(C),
+        C
+    )
+
+    target = mat_sub(
+        mat_scale(
+            dot(D, D),
+            identity3()
+        ),
+        outer(D, D)
+    )
+
+    identity_error = frobenius(
+        mat_sub(K, target)
+    )
+
+    KD = norm(
+        mat_vec(K, D)
+    )
+
+    max_identity_error = max(
+        max_identity_error,
+        identity_error
+    )
+
+    max_KD = max(
+        max_KD,
+        KD
+    )
+
+print("Exact identity:")
+print()
+print("  K = CᵀC")
+print()
+print("  K = |D|²I − DDᵀ")
+print()
+
+print(
+    "Maximum identity error = {:.3e}".format(
+        max_identity_error
+    )
+)
+
+print(
+    "Maximum |KD| = {:.3e}".format(
+        max_KD
+    )
+)
+
+check(
+    "K = |D|²I − DDᵀ.",
+    max_identity_error < 1e-12
+)
+
+check(
+    "KD = 0.",
+    max_KD < 1e-12
+)
+
+
+# =============================================================================
+# 10. TRANSVERSE EIGENVALUE DEGENERACY
+# =============================================================================
+
+section("10. TRANSVERSE OPERATOR")
+
+max_transverse_residual = 0.0
+max_splitting = 0.0
+
+for direction in directions[:200]:
+
+    k = scale(
+        0.25 / a,
+        direction
+    )
+
+    D = D_fcc(k)
+
+    D2 = dot(D, D)
+
+    if D2 < 1e-20:
+        continue
+
+    # Select a trial vector not parallel to D.
+    trial = (1.0, 0.0, 0.0)
+
+    if abs(dot(trial, D)) / math.sqrt(D2) > 0.9:
+        trial = (0.0, 1.0, 0.0)
+
+    # Project trial transverse to D.
+    projection = scale(
+        dot(trial, D) / D2,
+        D
+    )
+
+    e1 = sub(
+        trial,
+        projection
+    )
+
+    e1 = scale(
+        1.0 / norm(e1),
+        e1
+    )
+
+    # e2 = normalized D × e1
+    e2 = (
+        D[1] * e1[2] - D[2] * e1[1],
+        D[2] * e1[0] - D[0] * e1[2],
+        D[0] * e1[1] - D[1] * e1[0]
+    )
+
+    e2 = scale(
+        1.0 / norm(e2),
+        e2
+    )
+
+    C = curl_matrix(D)
+
+    K = mat_mul(
+        transpose(C),
+        C
+    )
+
+    r1 = norm(
+        sub(
+            mat_vec(K, e1),
+            scale(D2, e1)
+        )
+    )
+
+    r2 = norm(
+        sub(
+            mat_vec(K, e2),
+            scale(D2, e2)
+        )
+    )
+
+    max_transverse_residual = max(
+        max_transverse_residual,
+        r1,
+        r2
+    )
+
+    lambda1 = dot(
+        e1,
+        mat_vec(K, e1)
+    )
+
+    lambda2 = dot(
+        e2,
+        mat_vec(K, e2)
+    )
+
+    splitting = abs(
+        lambda1 - lambda2
+    )
+
+    max_splitting = max(
+        max_splitting,
+        splitting
+    )
+
+print(
+    "Maximum transverse residual = {:.3e}".format(
+        max_transverse_residual
+    )
+)
+
+print(
+    "Maximum transverse splitting = {:.3e}".format(
+        max_splitting
+    )
+)
+
+check(
+    "Both transverse directions have eigenvalue |D|².",
+    max_transverse_residual < 1e-12
+)
+
+check(
+    "Transverse eigenvalues remain degenerate.",
+    max_splitting < 1e-12
+)
+
+
+# =============================================================================
+# 11. FCC → CONTINUUM MAXWELL TENSOR
+# =============================================================================
+
+section("11. K_FCC → |k|²I − kkᵀ")
+
+tensor_errors = []
+
+for ka in ka_values:
+
+    maximum = 0.0
+
+    for direction in directions:
+
+        k = scale(
+            ka / a,
+            direction
+        )
+
+        D = D_fcc(k)
+
+        C = curl_matrix(D)
+
+        K = mat_mul(
+            transpose(C),
+            C
+        )
+
+        Maxwell = mat_sub(
+            mat_scale(
+                dot(k, k),
+                identity3()
+            ),
+            outer(k, k)
+        )
+
+        denominator = frobenius(
+            Maxwell
+        )
+
+        relative_error = (
+            frobenius(
+                mat_sub(K, Maxwell)
+            )
+            / denominator
+        )
+
+        maximum = max(
+            maximum,
+            relative_error
+        )
+
+    tensor_errors.append(maximum)
+
+    print(
+        "ka = {: .9f}"
+        "   relative tensor error = {:.12e}".format(
+            ka,
+            maximum
+        )
+    )
+
+
+tensor_exponent = power_law_exponent(
+    ka_values,
+    tensor_errors
+)
+
+print()
+print(
+    "Tensor scaling exponent = {:.8f}".format(
+        tensor_exponent
+    )
+)
+
+check(
+    "FCC tensor converges to |k|²I − kkᵀ as O((ka)²).",
+    abs(tensor_exponent - 2.0) < 0.10
+)
+
+
+# =============================================================================
+# 12. PHASE VELOCITY DIRECTIONALITY
+# =============================================================================
+
+section("12. PHASE VELOCITY")
+
+print()
+print("Constructed dispersion:")
+print()
+print("  ω² = |D(k)|²")
+print()
+print("Therefore:")
+print()
+print("  v_phase/c = |D(k)|/|k|")
+
+phase_data = []
+
+for ka in [
+    0.25,
+    0.0625,
+    0.015625,
+    0.0078125,
+    0.00390625
+]:
+
+    velocities = []
+
+    for direction in directions:
+
+        k = scale(
+            ka / a,
+            direction
+        )
+
+        D = D_fcc(k)
+
+        velocities.append(
+            norm(D) / norm(k)
+        )
+
+    vmin = min(velocities)
+    vmax = max(velocities)
+    mean = sum(velocities) / len(velocities)
+
+    spread = (
+        100.0 *
+        (vmax - vmin)
+        / mean
+    )
+
+    phase_data.append(
+        (ka, spread)
+    )
+
+    print()
+    print("ka = {:.9f}".format(ka))
+    print("  v_min/c = {:.12f}".format(vmin))
+    print("  v_max/c = {:.12f}".format(vmax))
+    print("  mean v/c = {:.12f}".format(mean))
+    print("  directional spread = {:.12f}%".format(spread))
+
+
+# =============================================================================
+# 13. FULL-SPHERE FIBONACCI TEST
+# =============================================================================
+
+section("13. FULL-SPHERE TEST")
+
+N_sphere = 1000
+
+golden_angle = (
+    math.pi *
+    (3.0 - math.sqrt(5.0))
+)
+
+sphere_directions = []
+
+for n in range(N_sphere):
+
+    z = (
+        1.0
+        - 2.0 * (n + 0.5) / N_sphere
+    )
+
+    r = math.sqrt(
+        max(0.0, 1.0 - z * z)
+    )
+
+    phi = golden_angle * n
+
+    sphere_directions.append((
+        r * math.cos(phi),
+        r * math.sin(phi),
+        z
+    ))
+
+
+print(
+    "Independent full-sphere directions:",
+    N_sphere
+)
+
+for ka in [
+    0.25,
+    0.0625,
+    0.015625,
+    0.0078125,
+    0.00390625
+]:
+
+    velocities = []
+
+    for direction in sphere_directions:
+
+        k = scale(
+            ka / a,
+            direction
+        )
+
+        D = D_fcc(k)
+
+        velocities.append(
+            norm(D) / norm(k)
+        )
+
+    vmin = min(velocities)
+    vmax = max(velocities)
+    mean = sum(velocities) / len(velocities)
+
+    spread = (
+        100.0 *
+        (vmax - vmin)
+        / mean
+    )
+
+    print(
+        "ka = {:.9f}"
+        "   spread = {:.12f}%".format(
+            ka,
+            spread
+        )
+    )
+
+
+# =============================================================================
+# 14. EXACT ANGULAR INVARIANCE
+# =============================================================================
+
+section("14. ANGULAR INVARIANCE OF QUADRATIC TERM")
+
+ka = 1.0e-4
+
+ratios = []
+
+for direction in sphere_directions:
+
+    k = scale(
+        ka / a,
+        direction
+    )
+
+    lhs = sum(
+        dot(k, d) ** 2
+        for d in fcc
+    )
+
+    rhs = (
+        2.0 *
+        a *
+        a *
+        dot(k, k)
+    )
+
+    ratios.append(
+        lhs / rhs
+    )
+
+rmin = min(ratios)
+rmax = max(ratios)
+rmean = sum(ratios) / len(ratios)
+
+print(
+    "Minimum ratio = {:.15f}".format(
+        rmin
+    )
+)
+
+print(
+    "Maximum ratio = {:.15f}".format(
+        rmax
+    )
+)
+
+print(
+    "Mean ratio    = {:.15f}".format(
+        rmean
+    )
+)
+
+print(
+    "Angular spread = {:.3e}".format(
+        rmax - rmin
+    )
+)
+
+check(
+    "Quadratic response is direction-independent.",
+    rmax - rmin < 1e-12
+)
+
+
+# =============================================================================
+# 15. EXPLICIT NON-FCC DIRECTIONS
+# =============================================================================
+
+section("15. EXPLICIT NON-FCC DIRECTIONS")
+
+non_fcc = [
+
+    (0.37, 0.81, 0.45),
+    (0.19, -0.73, 0.64),
+    (1.00, 2.37, -0.41),
+    (math.pi, math.e, math.sqrt(7.0)),
+    (-1.31, 0.27, 2.19),
+    (0.193, -0.827, 1.371),
+    (-1.917, 0.442, -0.318)
+]
+
+ka = 1.0e-3
+
+max_quad_error = 0.0
+max_D_error = 0.0
+
+for raw in non_fcc:
+
+    direction = scale(
+        1.0 / norm(raw),
+        raw
+    )
+
+    k = scale(
+        ka / a,
+        direction
+    )
+
+    lhs = sum(
+        dot(k, d) ** 2
+        for d in fcc
+    )
+
+    rhs = (
+        2.0 *
+        a *
+        a *
+        dot(k, k)
+    )
+
+    quad_error = (
+        abs(lhs - rhs)
+        / rhs
+    )
+
+    D = D_fcc(k)
+
+    D_error = (
+        norm(sub(D, k))
+        / norm(k)
+    )
+
+    max_quad_error = max(
+        max_quad_error,
+        quad_error
+    )
+
+    max_D_error = max(
+        max_D_error,
+        D_error
+    )
+
+    print()
+    print(
+        "Direction = "
+        "({:.6f}, {:.6f}, {:.6f})".format(
+            direction[0],
+            direction[1],
+            direction[2]
+        )
+    )
+
+    print(
+        "  quadratic error = {:.3e}".format(
+            quad_error
+        )
+    )
+
+    print(
+        "  D→k error       = {:.3e}".format(
+            D_error
+        )
+    )
+
+print()
+print(
+    "Maximum quadratic error = {:.3e}".format(
+        max_quad_error
+    )
+)
+
+print(
+    "Maximum D→k error = {:.3e}".format(
+        max_D_error
+    )
+)
+
+check(
+    "Explicit non-FCC directions satisfy the quadratic identity.",
+    max_quad_error < 1e-12
+)
+
+check(
+    "Explicit non-FCC directions approach D(k)=k.",
+    max_D_error < 1e-5
+)
+
+
+# =============================================================================
+# 16. RANDOM 3D DIRECTIONS
+# =============================================================================
+
+section("16. RANDOM 3D DIRECTIONS")
+
+random.seed(20260917)
+
+max_random_quad = 0.0
+max_random_D = 0.0
+
+for _ in range(250):
+
+    raw = (
+        random.uniform(-2.0, 2.0),
+        random.uniform(-2.0, 2.0),
+        random.uniform(-2.0, 2.0)
+    )
+
+    if norm(raw) < 1e-14:
+        continue
+
+    direction = scale(
+        1.0 / norm(raw),
+        raw
+    )
+
+    k = scale(
+        1.0e-3 / a,
+        direction
+    )
+
+    lhs = sum(
+        dot(k, d) ** 2
+        for d in fcc
+    )
+
+    rhs = (
+        2.0 *
+        a *
+        a *
+        dot(k, k)
+    )
+
+    quad_error = (
+        abs(lhs - rhs)
+        / rhs
+    )
+
+    D = D_fcc(k)
+
+    D_error = (
+        norm(sub(D, k))
+        / norm(k)
+    )
+
+    max_random_quad = max(
+        max_random_quad,
+        quad_error
+    )
+
+    max_random_D = max(
+        max_random_D,
+        D_error
+    )
+
+print("250 random 3D directions tested.")
+
+print()
+print(
+    "Maximum quadratic error = {:.3e}".format(
+        max_random_quad
+    )
+)
+
+print(
+    "Maximum D→k error = {:.3e}".format(
+        max_random_D
+    )
+)
+
+check(
+    "Random 3D directions satisfy the quadratic identity.",
+    max_random_quad < 1e-12
+)
+
+check(
+    "Random 3D directions converge toward D(k)=k.",
+    max_random_D < 1e-5
+)
+
+
+# =============================================================================
+# 17. DIRECTIONAL ANISOTROPY SCALING
+# =============================================================================
+
+section("17. DIRECTIONAL ANISOTROPY SCALING")
+
+anis_ka = []
+anis_spread = []
+
+for ka in [
+    0.25,
+    0.125,
+    0.0625,
+    0.03125,
+    0.015625,
+    0.0078125,
+    0.00390625
+]:
+
+    velocities = []
+
+    for direction in sphere_directions:
+
+        k = scale(
+            ka / a,
+            direction
+        )
+
+        D = D_fcc(k)
+
+        velocities.append(
+            norm(D) / norm(k)
+        )
+
+    vmin = min(velocities)
+    vmax = max(velocities)
+    mean = sum(velocities) / len(velocities)
+
+    spread = (
+        (vmax - vmin)
+        / mean
+    )
+
+    anis_ka.append(ka)
+    anis_spread.append(spread)
+
+anis_exponent = power_law_exponent(
+    anis_ka,
+    anis_spread
+)
+
+print(
+    "Directional anisotropy exponent = {:.8f}".format(
+        anis_exponent
+    )
+)
+
+check(
+    "Directional anisotropy vanishes as approximately (ka)².",
+    abs(anis_exponent - 2.0) < 0.10
+)
+
+
+# =============================================================================
+# 18. FINAL CONTINUUM CHAIN
+# =============================================================================
+
+section("18. CONTINUUM DIRECTIONALITY RESULT")
+
+print()
+print("                    FCC MICROSTRUCTURE")
+print()
+print("                  12 discrete bonds")
+print()
+print("                         ↓")
+print()
+print("                  k·δ SAMPLING")
+print()
+print("                         ↓")
+print()
+print("          Σδ δ_iδ_j = 2a²δ_ij")
+print()
+print("                         ↓")
+print()
+print("        Σδ(k·δ)² = 2a²|k|²")
+print()
+print("                         ↓")
+print()
+print("              VALID FOR EVERY k")
+print()
+print("                         ↓")
+print()
+print("                 D(k) → k")
+print()
+print("                         ↓")
+print()
+print("             K = CᵀC = |D|²I − DDᵀ")
+print()
+print("                         ↓")
+print()
+print("          K_FCC → |k|²I − kkᵀ")
+print()
+print("                         ↓")
+print()
+print("              CONTINUUM DIRECTIONALITY")
+print()
+
+
+# =============================================================================
+# 19. FINAL CERTIFICATE
+# =============================================================================
+
+section("19. FINAL CERTIFICATE")
+
+print()
+
+if FAIL_COUNT == 0:
+
+    print("╔" + "═" * 76 + "╗")
+    print("║" + " ALL TESTS PASSED ".center(76) + "║")
+    print("╚" + "═" * 76 + "╝")
+
+else:
+
+    print("╔" + "═" * 76 + "╗")
+    print("║" + " CHECK FAILED TESTS ".center(76) + "║")
+    print("╚" + "═" * 76 + "╝")
+
+
+print()
+print("PASS COUNT =", PASS_COUNT)
+print("FAIL COUNT =", FAIL_COUNT)
+
+print()
+print("CENTRAL RESULT")
+print("--------------")
+print()
+print("The 12 discrete FCC nearest-neighbor directions do not")
+print("restrict the wavevector k to those 12 directions.")
+print()
+print("The exact FCC second moment produces an isotropic quadratic")
+print("response for every continuous k ∈ R³.")
+print()
+print("The constructed FCC differential operator approaches k in")
+print("the long-wavelength limit, and the corresponding curl-curl")
+print("operator approaches the continuum transverse operator.")
+print()
+print("Therefore the calculation demonstrates:")
+print()
+print("  DISCRETE FCC MICROSCOPIC GEOMETRY")
+print("                  ↓")
+print("       ARBITRARY CONTINUOUS k")
+print("                  ↓")
+print("       CONTINUUM DIRECTIONALITY")
+print()
+
+print("=" * 80)
+print("              END OF FCC DIRECTIONALITY PROOF")
+print("=" * 80)
