@@ -86,3 +86,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - R4-04's 0.7% CORRECTED: the script compared acoustic scale l_A (~301) to first peak position (220) — wrong target. Proper l_A = 439 vs 301 (46% high). The 0.7% was a coincidence of errors.
 - Full CLASS C_l (no CDM, w=-0.9167 fluid, H0=67.48): theta_s 30% low (~600 sigma), 1st peak at l=290 vs 221, D_l 2.5x high, sigma8 = 0.071 vs 0.81 (no structure formation). No parameter freedom closes it.
 - VERDICT: CPQR cosmology as formulated is RULED OUT by the CMB — sharpest falsification in the ledger. Repair needs: reformulated background expansion + aether/vortex perturbation sector with CDM-like driving.
+
+## Cosmology repair (2026-10-06) — PARTIAL, one ingredient out
+- COSMO-background: H(z) derived from theory ingredients. rho_Lambda = 6.348e-10 J/m^3 recomputed — at local H0=73.57 gives Omega_Lambda=0.6948 ~= Planck 0.685. The H0 tension now lives inside the vacuum derivation. w_scr=0 DERIVED (rapid-oscillation averaging, Turner 1983).
+- COSMO-perturbations: full sector built. m_eff = 5.485e-27 eV; k_J computed; CLASS P1 run with Omega_scr=0.264 (specified, not fitted) matches Planck peak-by-peak: 100 theta_s=1.0405, peaks 221/537/815, sigma8=0.823.
+- NEW PREDICTION: high-l damping tail suppressed below Jeans scale — testable with ACT/SPT/S4.
+- SINGLE BLOCKER: Omega_scr,0 ~= 0.26 — the screening scalar's cosmic abundance (VEV Lambda or misalignment mechanism).
