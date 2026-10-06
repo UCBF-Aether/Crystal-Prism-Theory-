@@ -1,3 +1,12 @@
+# CPQR SOLVE ROUNDS — CURRENT STATUS (2026-10-06)
+
+**SOLID:** E8->137, hidden geometry, sqrt3 exact, 6pi^5 (2.3ppb unique), beta from geometry, 171 galaxies.
+**CRACKED:** alpha (anchor rigorous, fraction open), f_s0 (lower bound proven), defect particles (topology fixed, no spin-1/2), gravity formalism (P/Q quantified, spin-2 Lorentz derived), H0 (two-valued).
+**BROKEN:** hbar (needs new scale), G (needs 1/r dynamics + 1e39 suppression), S8 (kernel retracted: 0.412 not 0.817), cosmology (needs new field content).
+**INPUTS (honest set):** {a, C44, hbar, m0} — 4 vs SM ~19.
+Full trail below (retractions marked, newest last).
+
+---
 # CPQR Solve Rounds — 2026-10-06
 
 All 44 puzzle pieces mined from Cory's Facebook page (ROUND 4 of the ledger),
