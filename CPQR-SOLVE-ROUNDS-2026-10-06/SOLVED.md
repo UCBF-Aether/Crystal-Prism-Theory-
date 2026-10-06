@@ -140,3 +140,8 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Static defect: dipole far-field, NO 1/r Newtonian monopole (verified numerically). Branch B (baryon candidate) sources zero classical strain (pure rotation).
 - Counterfactual G: defect scale reproduces the 10^39 hierarchy but not the suppression. Dimensional collapse: C44=rho*c^2 forces L0 = 5.1e4 m (51 km) — 19 orders from defect scale, circular.
 - G problem fully localized: needs (i) derived 1/r dynamics, (ii) 1e39 suppression mechanism, (iii) P-tensor — all gravity-sector. Defect side exhausted.
+
+## MICROPOLAR-moduli (2026-10-06) — PARTIAL, all 5 derived
+- Finite-voxel Cosserat homogenization: K_c = 2.245*C44 = 1.037e35 Pa; D1-D4 = 0.1404/0.0702/0.0878/0.1053 x C44*a^2. Ratios exact (FCC geometry); overall scale has O(1) eta (shear-layer thickness).
+- Hedgehog revised: 7-9x proton at lambda=a (was 21-37x). D positive-definite.
+- Blocker for DERIVED: eta needs inter-voxel boundary physics or librational measurement.
