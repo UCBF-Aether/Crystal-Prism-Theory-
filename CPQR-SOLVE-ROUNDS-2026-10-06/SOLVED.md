@@ -122,3 +122,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - P NOT fixed by FCC symmetry: 4 free parameters (alpha: h00=dilatation; beta: spatial volume; gamma: tetragonal shear; delta: trigonal shear). Q: 2 params (a: Q00; b: Qij).
 - Two methods agree (character theory + Reynolds twirling). h_0i = 0 forced — static strain cannot source gravitomagnetism (genuine prediction).
 - Newtonian limit constrains only alpha. Rest need dynamics (steps 2-3: Lorentz emergence, kappa from moduli).
+
+## GRAV-lorentz (2026-10-06) — PARTIAL, step 2 done
+- Two cones EXACT: c_T = c (6 ppm, spin-2), c_L = sqrt(3)*c (12 decimals, spin-0).
+- Lorentz DERIVED for spin-2 sector (single cone) — Fierz-Pauli holds there. Full 4D Lorentz PROVEN IMPOSSIBLE (scalar cone kills Deser bootstrap as stated).
+- P: 4->3 params (gamma=delta forced). Q: 2->1 (Q = q*eta — superfluid couples only to trace/conformal).
+- sqrt(3)c mode is the theory's sharpest prediction, not a bug. Still free: beta, gamma, q, kappa (step 3).
