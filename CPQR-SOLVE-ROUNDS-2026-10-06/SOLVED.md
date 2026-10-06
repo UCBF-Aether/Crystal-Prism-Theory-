@@ -61,3 +61,15 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 
 ## Credit
 - The icosahedral quasicrystal parent framework (1/1 approximant bridge, phason-strain program) was contributed by **Nadalee Hill**.
+
+## Mechanism wave (2026-10-06)
+- MECH-vortex-profile: radial ODE solved with repaired potential — saturates, matches asserted 1-e^(-r/rt) (rms 0.06-0.11). Needs mu0 ~ 1/kpc.
+- MECH-fs0-derive: f_s0 = [1+z(2)/sqrt12]/[1+z(2)] = 0.557614 exactly. Blocker was w=1/sqrt12 proof.
+- MECH-phi5-origin: 5-fold symmetry forces 5th-order coupling -> d_a/a = C5*phi^-5. sin2W is 1/phi (RG), not phi^-5. C5 needs E8 phason constants.
+- MECH-defect-scale: 3D defect branch = 464-637 eV — 1000x below electron. 3D route closed for particles.
+- MECH-kernel-vortex: galactic vortices affect k~100-1000, kernel at k>0.08 — 1000x mismatch. Origin unidentified.
+
+## Deep-attack wave (2026-10-06)
+- ATK-mu0-kpc BLOCKED: mu0 ~ 1e-26 eV must be input; no CPQR scale produces it; degenerate with coupling M. Genuinely new ultralight scale.
+- ATK-w12-proof PARTIAL: w=1/sqrt12 PROVEN as exact incoherent-limit rms coherence (random-walk). f_s0 = exact formula + proven floor + one stated assumption (full incoherence).
+- ATK-defect-8d NEGATIVE (clean): 8D E8 defects exist (stable, attractive g) but at ~300 eV — 1700x below electron. Particles-are-defects closed under E_coh calibration.
