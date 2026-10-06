@@ -208,3 +208,13 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - NO WZW/continuous theta (topologically impossible for 3D target). Exactly Z2 FR discrete theta available.
 - MECHANISM WORKS: theta=pi opens spin-1/2; B=-1 hedgehog CAN be fermion. Induced S2 has |Hopf|=1.
 - theta not fixed by IR (UV voxel Berry phase needed, like Haldane). Spin-1/2 available, not forced.
+
+## MICROPOLAR-COSMO (2026-10-06) — NEGATIVE, kill confirmed with numbers
+- Rotational gap 0.48 GeV (K_c derived); Boltzmann e^-1.87e9 = 0 at z=1100. No thermal population ever.
+- No Goldstone rotationals; 2O disclinations need phase transition (none); w wrong anyway. Hedgehogs are baryons (7-9x p).
+- Micropolar contributes nothing to dark sector. Cosmology still needs new field content, period.
+
+## PHASON-MODE (2026-10-06) — NEGATIVE, 5th-order false
+- 6D cut-and-project built; w_approx derived (not isotropic). Y_h 6D action verified; 2 invariant quadratics confirmed.
+- Decisive: quadratic coupling = 0.0558 (non-zero, robust). 5th-order claim FALSE. Leading order is 2nd.
+- Survives: 2nd-order gives ~0.056 vs observed 0.090 — right magnitude, viable H0 mechanism (not phi^-5).
