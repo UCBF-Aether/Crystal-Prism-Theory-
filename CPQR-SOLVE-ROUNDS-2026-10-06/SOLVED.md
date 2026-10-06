@@ -73,3 +73,8 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - ATK-mu0-kpc BLOCKED: mu0 ~ 1e-26 eV must be input; no CPQR scale produces it; degenerate with coupling M. Genuinely new ultralight scale.
 - ATK-w12-proof PARTIAL: w=1/sqrt12 PROVEN as exact incoherent-limit rms coherence (random-walk). f_s0 = exact formula + proven floor + one stated assumption (full incoherence).
 - ATK-defect-8d NEGATIVE (clean): 8D E8 defects exist (stable, attractive g) but at ~300 eV — 1700x below electron. Particles-are-defects closed under E_coh calibration.
+
+## Hadron-defect program (2026-10-06)
+- HADRON-profile DERIVED: variational defect mass 1172-3117 MeV = 1.25-3.32x proton (4 trial profiles, zero tuning).
+  CORRECTION: the 0.80x cubic-core estimate is superseded — the variational band starts at 1.25x.
+  Winding-1 hedgehog branch: 21-37x proton (separate, heavier).
