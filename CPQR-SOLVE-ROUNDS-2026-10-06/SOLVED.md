@@ -191,3 +191,20 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - DIMENSIONAL PROOF: from {C44,a,hbar}, unique mass M*=hbar^2/(C44*a^5); m0=#*M*, #=6.7395 encodes V(r) depth. One of {m0,rho,c} MUST be input.
 - Honest input set: {a, C44, hbar, m0} (4 inputs vs SM ~19). Pure derivations: sqrt3 exact, spin-2 Lorentz structure, phonon topology, E8->137, 6pi^5 uniqueness, beta, Y_h isotropy.
 - Future unlock: V(r) D_e specified -> # computable -> 3 inputs.
+
+## G-SUPPRESSION (2026-10-06) — NEGATIVE, X killed
+- X=2^47*3^3*5^3/alpha: exponents absent from E8; 128 not E8 irrep; reverse-engineered (23% + prefactor fudge); circular via l_P.
+- Physical target: Pi_G = G*C44*a^2/c^4 = 7.2e-40. Needs defect coupling + V(r) D_e (same UV as C44). E8 only O(1)-O(10).
+- k_D legitimate. X retired.
+
+## H0-C5 (2026-10-06) — PARTIAL
+- 5-fold structure exact, but Y_h allows 2nd-order phason-dilatation (2 singlets in Sym^2) — 5th-order NOT a general result. Needs 1/1 approximant's specific mode.
+- C5 = 0.914+/-0.171 (vs SH0ES, honest); the 1.001 was circular. Direct geometry gives 1.057 not phi^-5.
+- Cubic consistency issue: 5th-order scalar vanishes for cubic approximant. Sigma_char universality supports real effect.
+- Blocker: 6D phason mode tensor + V(r) for exact C5. "No UV needed" not sustained.
+
+## SPIN-HOPF (2026-10-06) — PARTIAL, mechanism exists
+- pi1(M)=2O (binary octahedral, correction from Z2): 8 disclination classes, non-abelian braiding.
+- NO WZW/continuous theta (topologically impossible for 3D target). Exactly Z2 FR discrete theta available.
+- MECHANISM WORKS: theta=pi opens spin-1/2; B=-1 hedgehog CAN be fermion. Induced S2 has |Hopf|=1.
+- theta not fixed by IR (UV voxel Berry phase needed, like Haldane). Spin-1/2 available, not forced.
