@@ -81,3 +81,8 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 
 ## Micropolar program (2026-10-06)
 - MICROPOLAR-order-param PARTIAL: topology REPAIRED — M=SO(3)/O (rotational octahedral, |O|=24), pi3(M)=Z proven, pi1=Z2 (line disclinations), pi2=0. Hedgehog constructed, B=-1.000000 verified. Mass stays GeV (10-50 GeV). 5 new moduli named: D1-D4 (curvature), K_c (rotation coupling); +C11, C12 classical. Spin-1/2 still missing. The B=1-undefined break is fixed at the foundation.
+
+## CMB program (2026-10-06) — FALSIFICATION
+- R4-04's 0.7% CORRECTED: the script compared acoustic scale l_A (~301) to first peak position (220) — wrong target. Proper l_A = 439 vs 301 (46% high). The 0.7% was a coincidence of errors.
+- Full CLASS C_l (no CDM, w=-0.9167 fluid, H0=67.48): theta_s 30% low (~600 sigma), 1st peak at l=290 vs 221, D_l 2.5x high, sigma8 = 0.071 vs 0.81 (no structure formation). No parameter freedom closes it.
+- VERDICT: CPQR cosmology as formulated is RULED OUT by the CMB — sharpest falsification in the ledger. Repair needs: reformulated background expansion + aether/vortex perturbation sector with CDM-like driving.
