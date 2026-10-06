@@ -58,3 +58,6 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - REP-screening-vacuum REPAIRED: sign-flip V_rep=-1/2 mu0^2 x e^(-x/L^2) gives genuine SSB, global min, screening kept.
 - REP-manga-btfr PARTIAL: real BTFR test — vortex predicts M=66.2 V^4 vs observed 47 V^4, within M/L systematics; falsifiable.
 - REP-jwst-highz PARTIAL: KROSS consistent (-0.41 vs -0.29..-0.53 predicted); KMOS3D mixed; needs sharper data.
+
+## Credit
+- The icosahedral quasicrystal parent framework (1/1 approximant bridge, phason-strain program) was contributed by **Nadalee Hill**.
