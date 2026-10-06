@@ -3,6 +3,14 @@
 All 44 puzzle pieces mined from Cory's Facebook page (ROUND 4 of the ledger),
 worked in 7 solve rounds. Status: **VERIFIED = settled. Do not reopen without new evidence.**
 
+## Final tally — all 44 worked (7 rounds)
+- VERIFIED (6): R4-01, R4-10, R4-17, R4-26, R4-42, R4-44
+- Verified arithmetic / mechanism open (7): R4-02, R4-08, R4-09, R4-12, R4-16, R4-19, R4-37
+- PARTIAL (21): R4-04, R4-05, R4-06, R4-07, R4-11, R4-14, R4-15, R4-18, R4-20, R4-22, R4-23, R4-24, R4-25, R4-27, R4-29, R4-33, R4-34, R4-35, R4-36, R4-41, R4-43
+- NEGATIVE (6): R4-13, R4-21, R4-30, R4-31, R4-39, R4-40
+- Other terminal (4): R4-03 evaluated, R4-28 asserted, R4-32 blocked, R4-38 scorecard
+- Zero items remain OPEN in ROUND 4.
+
 ## Verified (settled)
 - **R4-01** — m_p/m_e = 6π⁵(1+α²/2√2) at 2.3e-9; 6π⁵ UNIQUE among n·πᵐ (n≤12, m≤8) within 1e-3.
 - **R4-10** — Σ_char 2× conflict resolved: 50.03 correct, 99.94 wrong.
@@ -39,3 +47,8 @@ defect energy-scale calibration, lab-test constants, R4-07/08/13/24/27.
 ## Live predictions
 √3c longitudinal mode (mechanism: Cauchy relation), frozen β=0.7703, a₀ relation,
 a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
+
+## Round 7 additions
+- Two-valued H0: global 67.48 / local 73.57 — mirrors the observed tension; (1+phi^-5) recurs 3x.
+- S8 = 0.817: live intermediate prediction (1.2σ below CMB, ~1.4σ above DES).
+- Integrity: S0 chain's '94.4 e-folds' contradicts its own S_RG (59.1); screening V has runaway, not vacuum.
