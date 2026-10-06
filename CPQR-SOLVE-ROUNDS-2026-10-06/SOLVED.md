@@ -135,3 +135,8 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - k-dependent kappa (1e18 x variation): h is derivative of u — incomparable normalizations. P-scale/kappa degeneracy.
 - Gravity is 1e40 weaker than elastic scale. S20's 0.9992 is a fit (X asserted), not derivation.
 - Step 4 (Deser) BLOCKED: needs full 4D Lorentz (proven impossible) + kappa. Next: defect-strain coupling (GRAV-defect-coupling IN PROGRESS).
+
+## GRAV-defect-coupling (2026-10-06) — NEGATIVE, clean
+- Static defect: dipole far-field, NO 1/r Newtonian monopole (verified numerically). Branch B (baryon candidate) sources zero classical strain (pure rotation).
+- Counterfactual G: defect scale reproduces the 10^39 hierarchy but not the suppression. Dimensional collapse: C44=rho*c^2 forces L0 = 5.1e4 m (51 km) — 19 orders from defect scale, circular.
+- G problem fully localized: needs (i) derived 1/r dynamics, (ii) 1e39 suppression mechanism, (iii) P-tensor — all gravity-sector. Defect side exhausted.
