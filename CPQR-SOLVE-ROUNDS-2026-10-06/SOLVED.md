@@ -152,3 +152,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - G_defect has NO exact value: Derrick's theorem (no minimizer; I->0 on collapse). Set by lattice core (UV).
 - K needs voxel microscopic potential (Debye circular/inconsistent).
 - Third relation: none independent. MISSING: inter-voxel potential V(r). C44 is fundamental like hbar/G without UV.
+
+## C44-puzzle (2026-10-06) — PARTIAL, boundary proven
+- Two scaling relations solid: m_p*c^2 = C44*a^3*G_defect; C44 = K*hbar*c/a^4. O(1) self-consistency PROVEN (G_defect=1.2573, K=5.1922) — scales talk properly, no hierarchy problem.
+- G_defect has NO exact continuum value (Derrick's theorem — collapse, no minimizer). Branch B: no EL solution. Value set by lattice UV cutoff.
+- Third relation: none exists (all candidates circular/asserted/scale-free).
+- MISSING: inter-voxel potential V(r) — the UV completion. Without it C44 is a fundamental constant like hbar. Puzzle assembled except the table.
