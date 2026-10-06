@@ -218,3 +218,12 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - 6D cut-and-project built; w_approx derived (not isotropic). Y_h 6D action verified; 2 invariant quadratics confirmed.
 - Decisive: quadratic coupling = 0.0558 (non-zero, robust). 5th-order claim FALSE. Leading order is 2nd.
 - Survives: 2nd-order gives ~0.056 vs observed 0.090 — right magnitude, viable H0 mechanism (not phi^-5).
+
+## NADALEE-AUDIT (2026-10-06) — suite run and graded
+- 42 tests (--quick): 8 Excellent, 4 Good, 2 OK, 12 structural, 7 Approximate, 9 FAIL.
+- GAUGE: NEGATIVE. U(1) is tautology (unitary similarity), SU(2) hardcoded, SU(3) fails its own test. Nothing derived from QC.
+- 6D CUT-AND-PROJECT: PARTIAL. Legitimate form (Galois conjugation correct) but spherical window, tuned N, ad hoc H.
+- MASS RATIOS: NEGATIVE. 91-99% off; Approach C is data-dredging by design.
+- PHI-FORMULAS: PARTIAL (numerology). Her m_p/m_e=phi^(13+phi^2) at 155ppm; CPQR 6pi^5 beats it 67x. DM 4phi-1 reverse-engineered (not Planck).
+- COSMO FRACTIONS: NEGATIVE (tuned boundaries). A5: PARTIAL (weak test).
+- BOTTOM LINE: honest effort, real lattice math, but headline claims not derived. Her solid contribution remains the QC parent concept (already credited). CPQR cannot import the numerical claims.
