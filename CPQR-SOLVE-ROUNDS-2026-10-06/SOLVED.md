@@ -78,3 +78,6 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - HADRON-profile DERIVED: variational defect mass 1172-3117 MeV = 1.25-3.32x proton (4 trial profiles, zero tuning).
   CORRECTION: the 0.80x cubic-core estimate is superseded — the variational band starts at 1.25x.
   Winding-1 hedgehog branch: 21-37x proton (separate, heavier).
+
+## Micropolar program (2026-10-06)
+- MICROPOLAR-order-param PARTIAL: topology REPAIRED — M=SO(3)/O (rotational octahedral, |O|=24), pi3(M)=Z proven, pi1=Z2 (line disclinations), pi2=0. Hedgehog constructed, B=-1.000000 verified. Mass stays GeV (10-50 GeV). 5 new moduli named: D1-D4 (curvature), K_c (rotation coupling); +C11, C12 classical. Spin-1/2 still missing. The B=1-undefined break is fixed at the foundation.
