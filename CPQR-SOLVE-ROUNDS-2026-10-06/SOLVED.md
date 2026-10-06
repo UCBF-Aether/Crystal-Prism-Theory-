@@ -98,3 +98,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Analytic 0.5576 is a LOWER BOUND, not exact: full incoherence refuted (finite-q modes retain partial coherence via Lindemann delta=0.529). q-model gives f_s0=0.5671 — essentially the empirical value. Only 6.9% residual coherence above floor needed.
 - Cost to hbar v7.0: 2.2% honest uncertainty (99.93% vs 97.8%), not a discrepancy.
 - Blocker: q1 (chain-length) scale unfixed. Deciding: PIMC f_s for CPQR FCC lattice, or Josephson-style measurement.
+
+## S8-kernel-derive (2026-10-06) — NEGATIVE, second falsification of screening-scalar DM
+- Kernel derived from first principles (Hu-Barkana-Gruzinov): m_eff=5.485e-27 eV, half-power at k~=0.11 h/Mpc (scale matched the old claim).
+- Amount catastrophic: sigma8 0.823 -> 0.403, S8=0.412 vs claimed 0.817. m~5e-27 eV erases small-scale structure — no galaxies.
+- Old R4-27 "gentle 6% kernel" was stated, never derived — killed by the derivation. m_eff fixed by SPARC-fitted mu0; no freedom to soften.
+- Independent of COSMO-abundance; both falsify the screening scalar as DM. Pivot to superfluid sector stands.
