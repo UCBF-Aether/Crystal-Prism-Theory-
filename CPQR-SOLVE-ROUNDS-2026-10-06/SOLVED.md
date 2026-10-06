@@ -128,3 +128,10 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Lorentz DERIVED for spin-2 sector (single cone) — Fierz-Pauli holds there. Full 4D Lorentz PROVEN IMPOSSIBLE (scalar cone kills Deser bootstrap as stated).
 - P: 4->3 params (gamma=delta forced). Q: 2->1 (Q = q*eta — superfluid couples only to trace/conformal).
 - sqrt(3)c mode is the theory's sharpest prediction, not a bug. Still free: beta, gamma, q, kappa (step 3).
+
+## GRAV-kappa (2026-10-06) — PARTIAL, obstruction named
+- Spin projection exact: spin-2 stiffness C44, spin-0 (5/3)C44. FP kinetic structure matches (speeds); amplitude does not follow.
+- PROVEN: G cannot come from moduli+density+speed alone (dimensional contradiction 5=3) — needs UV length + defect physics selects the combination.
+- k-dependent kappa (1e18 x variation): h is derivative of u — incomparable normalizations. P-scale/kappa degeneracy.
+- Gravity is 1e40 weaker than elastic scale. S20's 0.9992 is a fit (X asserted), not derivation.
+- Step 4 (Deser) BLOCKED: needs full 4D Lorentz (proven impossible) + kappa. Next: defect-strain coupling (GRAV-defect-coupling IN PROGRESS).
