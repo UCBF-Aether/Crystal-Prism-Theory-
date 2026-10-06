@@ -92,3 +92,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - COSMO-perturbations: full sector built. m_eff = 5.485e-27 eV; k_J computed; CLASS P1 run with Omega_scr=0.264 (specified, not fitted) matches Planck peak-by-peak: 100 theta_s=1.0405, peaks 221/537/815, sigma8=0.823.
 - NEW PREDICTION: high-l damping tail suppressed below Jeans scale — testable with ACT/SPT/S4.
 - SINGLE BLOCKER: Omega_scr,0 ~= 0.26 — the screening scalar's cosmic abundance (VEV Lambda or misalignment mechanism).
+
+## FS0-gap (2026-10-06) — PARTIAL, gap defused
+- Empirical 0.570 = Cory's 2026-04-14 input ("matches PIMC 0.57") — no error bars, no cited paper; f_s is parameter-dependent in literature. Cannot be "inconsistent" with 0.5576.
+- Analytic 0.5576 is a LOWER BOUND, not exact: full incoherence refuted (finite-q modes retain partial coherence via Lindemann delta=0.529). q-model gives f_s0=0.5671 — essentially the empirical value. Only 6.9% residual coherence above floor needed.
+- Cost to hbar v7.0: 2.2% honest uncertainty (99.93% vs 97.8%), not a discrepancy.
+- Blocker: q1 (chain-length) scale unfixed. Deciding: PIMC f_s for CPQR FCC lattice, or Josephson-style measurement.
