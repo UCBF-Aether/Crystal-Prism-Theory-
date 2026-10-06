@@ -170,3 +170,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - m0 proven reverse-engineered from C44 (matches C44*a^3/(4c^2) to 0.002%). delta=0.529 asserted (3-5x standard Lindemann; Debye gives 0.386).
 - Circularity: fixed-point (C44_out*C44_in = S), not identity — 6.6% was engineered consistency via free delta^4. Any C44_in works. No falsifying power.
 - C44 REMAINS INPUT. Survives: Morse/central form, 2:1:1 isotropy theorem, Derrick beaten, O(1) consistency.
+
+## V-ISOTROPY (2026-10-06) — DERIVED, gap closed
+- Not a new force — the correct bond network. Icosahedral QC parent bonds + central springs -> C11:C12:C44 = 3:1:1 EXACT (two independent bond sets). FCC control reproduces 2:1:1.
+- Group-theory theorem: Y_h admits no spin-2/spin-4 invariants -> exactly isotropic (2 moduli); Cauchy -> 3:1:1 forced. Matches F7's 3151-point QC computation.
+- Superfluid coupling ruled OUT (wrong pattern, wrong sign). Many-body not needed.
+- The QC parent is the ELASTIC parent too — icosahedral symmetry forces isotropy. V(r) now complete: Morse + icosahedral bonds.
