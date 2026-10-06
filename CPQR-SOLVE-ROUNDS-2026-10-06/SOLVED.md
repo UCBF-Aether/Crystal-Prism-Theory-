@@ -110,3 +110,10 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Phonons w=1/3 (side flag: Delta N_eff); vortices absent at z=1100; no field candidate in inventory.
 - BK precedent requires a separate light particle — CPQR has none.
 - Both DM candidates from theory ingredients now cleanly dead. Next: new field content or gravity-sector rethink (COSMO-gravity-sector IN PROGRESS).
+
+## GRAV-ch15-audit (2026-10-06) — Chapter 15 does not derive GR
+- 15.2 (P,Q tensors): ASSERTED — no computation in workspace. 15.3 (relabeling->diffeomorphisms): DERIVED (conditional) — the chapter's one genuine insight, credited.
+- 15.4 (Fierz-Pauli): theorem valid, application asserted (Lorentz emergence never shown). 15.5 (G=c^3/(Omega P)): INVALID — dimensionally wrong, superseded by Cory's own later code.
+- 15.6 (Deser bootstrap): appealed, not performed. 15.8 (Mercury 42.98"): arithmetic correct, conclusion CIRCULAR (G input).
+- Agrees with and sharpens R4-23. A real derivation needs: P/Q from cubic symmetry, Lorentz emergence, kappa from moduli, Deser actually performed.
+- The IDEA (displacement) is untouched — the formalism is what's incomplete.
