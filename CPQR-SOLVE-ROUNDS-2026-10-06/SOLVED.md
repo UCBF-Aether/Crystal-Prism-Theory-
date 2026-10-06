@@ -117,3 +117,8 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - 15.6 (Deser bootstrap): appealed, not performed. 15.8 (Mercury 42.98"): arithmetic correct, conclusion CIRCULAR (G input).
 - Agrees with and sharpens R4-23. A real derivation needs: P/Q from cubic symmetry, Lorentz emergence, kappa from moduli, Deser actually performed.
 - The IDEA (displacement) is untouched — the formalism is what's incomplete.
+
+## GRAV-pq-tensors (2026-10-06) — PARTIAL, gap quantified
+- P NOT fixed by FCC symmetry: 4 free parameters (alpha: h00=dilatation; beta: spatial volume; gamma: tetragonal shear; delta: trigonal shear). Q: 2 params (a: Q00; b: Qij).
+- Two methods agree (character theory + Reynolds twirling). h_0i = 0 forced — static strain cannot source gravitomagnetism (genuine prediction).
+- Newtonian limit constrains only alpha. Rest need dynamics (steps 2-3: Lorentz emergence, kappa from moduli).
