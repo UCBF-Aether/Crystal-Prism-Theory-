@@ -52,3 +52,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Two-valued H0: global 67.48 / local 73.57 — mirrors the observed tension; (1+phi^-5) recurs 3x.
 - S8 = 0.817: live intermediate prediction (1.2σ below CMB, ~1.4σ above DES).
 - Integrity: S0 chain's '94.4 e-folds' contradicts its own S_RG (59.1); screening V has runaway, not vacuum.
+
+## Repair wave (2026-10-06)
+- REP-S0-efolds REPAIRED: '94.4' was mislabeled RG running range (correct); suppression e-folds = 59.1. rho_L at 1.6% vs local-H0.
+- REP-screening-vacuum REPAIRED: sign-flip V_rep=-1/2 mu0^2 x e^(-x/L^2) gives genuine SSB, global min, screening kept.
+- REP-manga-btfr PARTIAL: real BTFR test — vortex predicts M=66.2 V^4 vs observed 47 V^4, within M/L systematics; falsifiable.
+- REP-jwst-highz PARTIAL: KROSS consistent (-0.41 vs -0.29..-0.53 predicted); KMOS3D mixed; needs sharper data.
