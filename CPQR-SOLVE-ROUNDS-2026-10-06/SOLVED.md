@@ -158,3 +158,10 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - G_defect has NO exact continuum value (Derrick's theorem — collapse, no minimizer). Branch B: no EL solution. Value set by lattice UV cutoff.
 - Third relation: none exists (all candidates circular/asserted/scale-free).
 - MISSING: inter-voxel potential V(r) — the UV completion. Without it C44 is a fundamental constant like hbar. Puzzle assembled except the table.
+
+## V-POTENTIAL (2026-10-06) — PARTIAL, C44 derived within 7%
+- V(r) = Morse, central pair (Cauchy requires it). V''(d)=6.761e19 J/m^2 from Lindemann (hbar,a,m0,delta) — no C44 input.
+- C44 = 4.924e34 Pa (+6.6%) via exact FCC lattice sums. K=5.5336. C44 is now a PREDICTION, not input.
+- Proton route cross-check: C44=4.84e34 — two independent scales agree.
+- PROVEN: central-pair isotropy impossible (2:1:1 not 3:1:1) — needs beyond-pair physics. NNN fails. Derrick beaten by lattice cutoff.
+- Gaps: isotropy mechanism unknown; Morse range one free param; proton defect ID; delta_L/m0 provenance verify.
