@@ -145,3 +145,10 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Finite-voxel Cosserat homogenization: K_c = 2.245*C44 = 1.037e35 Pa; D1-D4 = 0.1404/0.0702/0.0878/0.1053 x C44*a^2. Ratios exact (FCC geometry); overall scale has O(1) eta (shear-layer thickness).
 - Hedgehog revised: 7-9x proton at lambda=a (was 21-37x). D positive-definite.
 - Blocker for DERIVED: eta needs inter-voxel boundary physics or librational measurement.
+
+## C44-puzzle (2026-10-06) — PARTIAL
+- Scaling relations DERIVED: (R1) m_p c^2 = C44 a^3 G_defect; (R2) C44 = K hbar c/a^4.
+- O(1) self-consistency PROVEN: G_defect=1.2573, K=5.1922. No hierarchy — the scalings are right.
+- G_defect has NO exact value: Derrick's theorem (no minimizer; I->0 on collapse). Set by lattice core (UV).
+- K needs voxel microscopic potential (Debye circular/inconsistent).
+- Third relation: none independent. MISSING: inter-voxel potential V(r). C44 is fundamental like hbar/G without UV.
