@@ -176,3 +176,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Group-theory theorem: Y_h admits no spin-2/spin-4 invariants -> exactly isotropic (2 moduli); Cauchy -> 3:1:1 forced. Matches F7's 3151-point QC computation.
 - Superfluid coupling ruled OUT (wrong pattern, wrong sign). Many-body not needed.
 - The QC parent is the ELASTIC parent too — icosahedral symmetry forces isotropy. V(r) now complete: Morse + icosahedral bonds.
+
+## C-FIX (2026-10-06) — NEGATIVE, boundary proven
+- m0 reverse-engineered from c (0.0019% match) — 6 ppm is identity rounding noise. All m0 routes dead (V(r) needs D_e; two-fluid partitions; E8 scaleless; no voxel charge; Lindemann 17-60x off).
+- DIMENSIONAL PROOF: from {C44,a,hbar}, unique mass M*=hbar^2/(C44*a^5); m0=#*M*, #=6.7395 encodes V(r) depth. One of {m0,rho,c} MUST be input.
+- Honest input set: {a, C44, hbar, m0} (4 inputs vs SM ~19). Pure derivations: sqrt3 exact, spin-2 Lorentz structure, phonon topology, E8->137, 6pi^5 uniqueness, beta, Y_h isotropy.
+- Future unlock: V(r) D_e specified -> # computable -> 3 inputs.
