@@ -104,3 +104,9 @@ a₀(z) evolution, +3.5% CMB-S4 EE at 3rd peak, torsional GWs (3G detectors).
 - Amount catastrophic: sigma8 0.823 -> 0.403, S8=0.412 vs claimed 0.817. m~5e-27 eV erases small-scale structure — no galaxies.
 - Old R4-27 "gentle 6% kernel" was stated, never derived — killed by the derivation. m_eff fixed by SPARC-fitted mu0; no freedom to soften.
 - Independent of COSMO-abundance; both falsify the screening scalar as DM. Pivot to superfluid sector stands.
+
+## COSMO-superfluid-dm (2026-10-06) — NEGATIVE, clean
+- Superfluid present at recombination but irrelevant: it is a property OF the vacuum (lattice), not a fluid IN it. f_s0 of vacuum energy is still vacuum energy (w=-1).
+- Phonons w=1/3 (side flag: Delta N_eff); vortices absent at z=1100; no field candidate in inventory.
+- BK precedent requires a separate light particle — CPQR has none.
+- Both DM candidates from theory ingredients now cleanly dead. Next: new field content or gravity-sector rethink (COSMO-gravity-sector IN PROGRESS).
